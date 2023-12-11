@@ -9,16 +9,17 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)  # tf2_geometry_msgsへの依存関係を追加
 find_package(geometry_msgs REQUIRED) # PoseStampedを使うためのパッケージ
 find_package(nucleo_agent REQUIRED) # ヌクレオと通信するためのパッケージ
 
 # odometry_nodeの設定
 # 実行ファイル名とソースファイルの指定
 add_executable(odometry_node 
-  # src/odometry_node.cpp
-  src/odometry_publisher_main.cpp
-  # src/odometer_subscriber.cpp
-  src/odometry_publisher.cpp
+  src/odometry_node.cpp
+  src/odometer_pub_sub.cpp
+  src/odometry_class.cpp
 )
 # インクルードディレクトリの指定
 target_include_directories(odometry_node
@@ -29,6 +30,8 @@ target_include_directories(odometry_node
 ament_target_dependencies(odometry_node
   rclcpp
   std_msgs
+  tf2
+  tf2_geometry_msgs
   geometry_msgs
   nucleo_agent
 )
