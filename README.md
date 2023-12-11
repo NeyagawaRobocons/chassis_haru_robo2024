@@ -24,7 +24,7 @@
 - odometry_node：
   - 役割：オドメトリを計算するノード
   - 入力：/odometer_3wheelトピック (nucleo_agent/OdometerData型：**自作型**)：計測輪の角変位
-  - 出力1：/odometry_poseトピック (geometry_msgs/Pose2D型)：計算した自己位置
+  - 出力1：/odometry_poseトピック (geometry_msgs/Pose型)：計算した自己位置
   - 出力2：/odomフレームと/base_linkフレームのtf：amclなどに渡すときの自己位置
 - localize_node (名称は適宜変更)：
   - 役割：2D LiDARなどでオドメトリを補正するノード
