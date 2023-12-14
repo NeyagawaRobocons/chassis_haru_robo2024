@@ -18,7 +18,7 @@
 
 # システムについて
 ## システム構成
-![image](https://github.com/NeyagawaRobocons/Chassis_HaruRobo2024/assets/143268535/db7f6a11-8333-433c-acfd-ce95a6fa8441)
+![image](https://github.com/NeyagawaRobocons/chassis_haru_robo2024/assets/143268535/c24b4813-8417-4854-8a19-b02d182cb452)
 
 ## 実装するノードについて
 - odometry_node：
@@ -28,13 +28,9 @@
   - 出力2：/odomフレームと/base_linkフレームのtf：amclなどに渡すときの自己位置
 - localize_node (名称は適宜変更)：
   - 役割：2D LiDARなどでオドメトリを補正するノード
-  - 入力：/odometry_poseトピック  (geometry_msgs/Pose2D型)
-  - 出力：/robot_poseトピック (geometry_msgs/Pose2D型)：補正された自己位置
+  - 入力：/odometry_poseトピック  (geometry_msgs/PoseStamped型)
+  - 出力：/robot_poseトピック (geometry_msgs/Pose型)：補正された自己位置
     -  -> 型は変更される可能性アリ
-- target_point_server (※**図には入ってない、第一段階までしか存在しない**)：
-  - 役割：目標点と姿勢をトピックに投げるノード
-  - 入力：未定、人が座標を指定する
-  - 出力：/target_poseトピック (geometry_msgs/Pose2D型)：目標点の座標
 - path_server (※**第二段階から実装**)：
   - 役割：目標の経路(姿勢情報、速度情報込み)をトピックに投げるノード
   - 入力：未定、計算するかも
@@ -42,8 +38,8 @@
 - calc_vel (名称は適宜変更)：
   - 役割：経路情報と自己位置を比較して、速度指令を計算するノード
   - 第零目標時点(※**図には入ってない**)：
-    - 処理：目標点と現在位置に対してPID制御を行う (操作量：各タイヤの角速度、制御量：x, y, \theta)
-    - 入力：/target_poseトピック (geometry_msgs/Pose2D)：目標点の座標
+    - 処理：目標点と現在位置に対してPI制御を行う (操作量：各タイヤの角速度、制御量：x, y, \theta)
+    - 入力：/target_poseトピック (geometry_msgs/PoseStamped型)：目標点の座標
     - 出力：/input_velトピック (std_msgs/Float64Array型)：各タイヤの目標角速度 (長さ3の配列)
   - @第二目標時点：
     - 処理：Pure Pursuit法で目標速度を計算
