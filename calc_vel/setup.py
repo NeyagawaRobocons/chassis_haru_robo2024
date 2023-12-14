@@ -24,7 +24,8 @@ setup(
     entry_points={
         'console_scripts': [
             'pose_PI_controller = calc_vel.pose_PI_controller:main', 
-            'localize_node = calc_vel.localize_node:main'
+            'localize_node = calc_vel.localize_node:main',
+            'robot_tf_node = calc_vel.robot_tf_node:main',
         ],
     },
 )
