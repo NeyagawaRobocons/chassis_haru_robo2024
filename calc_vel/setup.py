@@ -27,6 +27,7 @@ setup(
             'pose_PI_controller = calc_vel.pose_PI_controller2:main', 
             'localize_node = calc_vel.localize_node:main',
             'robot_tf_node = calc_vel.robot_tf_node:main',
+            'goal_tf_node = calc_vel.goal_tf_node:main',
             'PI_simulator = calc_vel.pose_PI_simulator:main'
         ],
     },
