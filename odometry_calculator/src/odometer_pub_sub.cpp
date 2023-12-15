@@ -1,6 +1,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/qos.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include "nucleo_agent/msg/odometer_data.hpp"  // メッセージ型のインクルード
 #include "odometer_pub_sub.hpp"
 
@@ -20,5 +21,10 @@ OdomPubSub::OdomPubSub(
     "odometer_3wheel", // トピック名
     rclcpp::QoS(10),
     std::bind(&OdomPubSub::_topic_callback, this, std::placeholders::_1)
+  );
+  initial_subscription = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
+    "initialpose", // トピック名
+    rclcpp::QoS(10),
+    std::bind(&OdomPubSub::_initial_callback, this, std::placeholders::_1)
   );
 }

@@ -2,6 +2,7 @@
 #include "odometer_pub_sub.hpp"
 #include "nucleo_agent/msg/odometer_data.hpp"
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include "odometry_class.hpp"
 
 #include <tf2/LinearMath/Quaternion.h>
@@ -31,6 +32,25 @@ void OdomPubSub::_topic_callback(const nucleo_agent::msg::OdometerData::SharedPt
 
     RCLCPP_INFO(this->get_logger(), "publish odometry pose");
     publisher_->publish(*msg_pose);
+}
+
+void OdomPubSub::_initial_callback(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg) {
+  // メッセージの内容をログに出力
+  RCLCPP_INFO(this->get_logger(), "receive initial pose");
+
+  // 初期位置の設定
+  pose2D initial_pose;
+  initial_pose.x = msg->pose.pose.position.x;
+  initial_pose.y = msg->pose.pose.position.y;
+
+  // クォータニオンからヨー角を取得
+  tf2::Quaternion quat;
+  tf2::fromMsg(msg->pose.pose.orientation, quat);
+  double roll, pitch, yaw;
+  tf2::Matrix3x3(quat).getRPY(roll, pitch, yaw);
+  initial_pose.theta = yaw;
+
+  odom.set_pose(initial_pose);
 }
 
 int main(int argc, char * argv[]) {
