@@ -12,6 +12,8 @@
   - p_gain_theta: thetaのPゲイン
   - i_gain_theta: thetaのIゲイン
   - max_input: 入力の最大値
+  - radius: タイヤ半径
+  - length: タイヤの設置半径
 - 起動コマンド: 
   - cd ~/ros2_ws/src/chassis_haru_robo2024/calc_vel/calc_vel
   - ros2 run calc_vel calc_vel --ros-args --params-file ../yaml/pi_params.yaml
@@ -22,6 +24,7 @@ from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Float64MultiArray
 from .PI_controller_class import PIController  # PI制御クラスのインポート
+import numpy as np
 
 class VelocityController(Node):
     def __init__(self):
@@ -37,7 +40,9 @@ class VelocityController(Node):
                 ('i_gain_y', 1.0),
                 ('p_gain_theta', 1.0),
                 ('i_gain_theta', 1.0),
-                ('max_input', 120.0)
+                ('max_input', 120.0),
+                ('radius', 0.050), # タイヤ半径
+                ('length', 0.400), # タイヤの設置半径
             ]
         )
 
@@ -56,6 +61,10 @@ class VelocityController(Node):
         # メッセージの初期化
         self.goal_pose = None
         self.current_pose = None
+        self.radius = self.get_parameter('radius').value
+        self.length = self.get_parameter('length').value
+        # 前回のコールバック時間
+        self.last_time = self.get_clock().now()
 
     def goal_pose_callback(self, msg):
         self.goal_pose = msg
@@ -66,27 +75,56 @@ class VelocityController(Node):
 
     def current_pose_callback(self, msg):
         self.current_pose = msg
+        self.get_logger().info('current_pose: %s' % self.current_pose)
         self.calculate_and_publish_velocity()
 
     def calculate_and_publish_velocity(self):
+        current_time = self.get_clock().now()
+        dt = (current_time - self.last_time).nanoseconds / 1e9
+        self.last_time = current_time
         if self.goal_pose is None or self.current_pose is None:
             return
 
         # 目標位置と現在位置から制御入力を計算
         v_x = self.controller_x.update(self.goal_pose.pose.position.x, self.current_pose.pose.position.x, dt)
         v_y = self.controller_y.update(self.goal_pose.pose.position.y, self.current_pose.pose.position.y, dt)
-        omega = self.controller_theta.update(self.get_yaw(self.goal_pose.pose), self.get_yaw(self.current_pose.pose), dt)
+        omega = self.controller_theta.update(self.get_yaw(self.goal_pose), self.get_yaw(self.current_pose), dt)
 
-        # ここでオムニホイールの速度に変換（ユーザーが実装）
+        # x, y方向の速度はロボットの向きに合わせて変換(値を角-thetaだけ回転させる)
+        _theta = self.get_yaw(self.current_pose)
+        rot_v_x = v_x * np.cos(_theta) + v_y * np.sin(_theta)
+        rot_v_y = -v_x * np.sin(_theta) + v_y * np.cos(_theta)
+        # 3輪オムニホイールの速度に変換
+        omega_1, omega_2, omega_3 = self.calc_3wheel_vel(self.radius, self.length, rot_v_x, rot_v_y, omega)
 
         # 速度指令のパブリッシュ
         vel_msg = Float64MultiArray()
-        vel_msg.data = [v_x, v_y, omega]
+        vel_msg.data = [0.0, 0.0, 0.0] # data変数の初期化
+        vel_msg.data = [omega_1, omega_2, omega_3]
         self.publisher_.publish(vel_msg)
 
-    def get_yaw(self, pose):
+    def get_yaw(self, pose_stamped):
         # 回転（クォータニオン）からYaw角を取得する関数
-        # 実装が必要
+        orientation = pose_stamped.pose.orientation
+        # 四元数の値
+        x = orientation.x
+        y = orientation.y
+        z = orientation.z
+        w = orientation.w
+
+        # 四元数からヨー角を計算
+        siny_cosp = 2 * (w * z + x * y)
+        cosy_cosp = 1 - 2 * (y * y + z * z)
+        yaw = np.arctan2(siny_cosp, cosy_cosp)
+
+        return yaw
+    
+    def calc_3wheel_vel(self, r, l, v_x, v_y, omega):
+        # ロボットの速度，角速度から3輪オムニホイールの速度を計算する．
+        omega_1 = (-0.5 * v_x + 0.8660254037844386 * v_y + l * omega) / r
+        omega_2 = (-0.5 * v_x - 0.8660254037844386 * v_y + l * omega) / r
+        omega_3 = (v_x + l * omega) / r
+        return omega_1, omega_2, omega_3
 
 def main(args=None):
     rclpy.init(args=args)
