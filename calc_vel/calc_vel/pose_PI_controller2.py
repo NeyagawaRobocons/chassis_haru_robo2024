@@ -1,3 +1,22 @@
+"""
+- description: 位置制御を行うノード
+- input1: 目標位置：/goal_poseトピック(geometry_msgs/msg/PoseStamped型)
+- input2: 現在位置：/robot_poseトピック(geometry_msgs/msg/PoseStamped型)
+- output: 速度指令：/input_velトピック(std_msgs/msg/Float64MultiArray型)
+- 計算: -> PI_controller_class.pyのPI_controllerクラスを使用
+- パラメータ: -> yamlファイル(../yaml/pi_params.yaml)から読み込み
+  - p_gain_x: xのPゲイン
+  - i_gain_x: xのIゲイン
+  - p_gain_y: yのPゲイン
+  - i_gain_y: yのIゲイン
+  - p_gain_theta: thetaのPゲイン
+  - i_gain_theta: thetaのIゲイン
+  - max_input: 入力の最大値
+- 起動コマンド: 
+  - cd ~/ros2_ws/src/chassis_haru_robo2024/calc_vel/calc_vel
+  - ros2 run calc_vel calc_vel --ros-args --params-file ../yaml/pi_params.yaml
+"""
+
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
