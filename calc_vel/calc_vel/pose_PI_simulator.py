@@ -74,7 +74,7 @@ class OdometryCalculator(Node):
         # 初期位置を受け取る
         self.current_pose.pose = msg.pose.pose
         self.current_pose.header = msg.header
-        self.get_logger().info('initial_pose: %s' % self.current_pose)
+        self.get_logger().info('initialpose: %s' % self.current_pose)
         # オドメトリー情報をpublish
         self.publisher_.publish(self.current_pose)
     

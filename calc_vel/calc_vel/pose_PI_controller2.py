@@ -35,36 +35,52 @@ class VelocityController(Node):
             namespace='',
             parameters=[
                 ('p_gain_x', 1.0),
-                ('i_gain_x', 1.0),
+                ('i_gain_x', 0.1),
                 ('p_gain_y', 1.0),
-                ('i_gain_y', 1.0),
-                ('p_gain_theta', 1.0),
-                ('i_gain_theta', 1.0),
-                ('max_input', 120.0),
+                ('i_gain_y', 0.1),
+                ('p_gain_theta', 0.1),
+                ('i_gain_theta', 0.01),
+                ('max_input', 30.0),
                 ('radius', 0.050), # タイヤ半径
                 ('length', 0.400), # タイヤの設置半径
             ]
         )
+        # パラメータの取得
+        self.p_gain_x = self.get_parameter('p_gain_x').value
+        self.i_gain_x = self.get_parameter('i_gain_x').value
+        self.p_gain_y = self.get_parameter('p_gain_y').value
+        self.i_gain_y = self.get_parameter('i_gain_y').value
+        self.p_gain_theta = self.get_parameter('p_gain_theta').value
+        self.i_gain_theta = self.get_parameter('i_gain_theta').value
+        max_input = self.get_parameter('max_input').value
+        self.radius = self.get_parameter('radius').value
+        self.length = self.get_parameter('length').value
+        # メッセージの初期化
+        self.goal_pose = None
+        self.current_pose = None
+        # 前回のコールバック時間
+        self.last_time = self.get_clock().now()
+
+        # 入力の最大値から各軸の最大速度を計算
+        # self.v_x_max = self.radius / 3.0 * (-max_input - max_input + 2 * self.radius)
+        # self.v_y_max = self.radius / 1.7320508075688772 * (max_input - max_input)
+        self.v_x_max = max_input * self.radius
+        self.v_y_max = max_input * self.radius
+        self.omega_max = self.radius * (max_input) / self.length
+        self.get_logger().info('v_x_max: %s' % self.v_x_max)
+        self.get_logger().info('v_y_max: %s' % self.v_y_max)
+        self.get_logger().info('omega_max: %s' % self.omega_max)
 
         # PIコントローラのインスタンス化
-        self.controller_x = PIController(self.get_parameter('p_gain_x').value, self.get_parameter('i_gain_x').value, self.get_parameter('max_input').value)
-        self.controller_y = PIController(self.get_parameter('p_gain_y').value, self.get_parameter('i_gain_y').value, self.get_parameter('max_input').value)
-        self.controller_theta = PIController(self.get_parameter('p_gain_theta').value, self.get_parameter('i_gain_theta').value, self.get_parameter('max_input').value)
+        self.controller_x = PIController(self.p_gain_x, self.i_gain_x, self.v_x_max)
+        self.controller_y = PIController(self.p_gain_y, self.i_gain_y, self.v_y_max)
+        self.controller_theta = PIController(self.p_gain_theta, self.i_gain_theta, self.omega_max)
 
         # サブスクライバーの設定
         self.subscription_goal = self.create_subscription(PoseStamped, '/goal_pose', self.goal_pose_callback, 10)
         self.subscription_current = self.create_subscription(PoseStamped, '/robot_pose', self.current_pose_callback, 10)
-
         # パブリッシャーの設定
         self.publisher_ = self.create_publisher(Float64MultiArray, '/input_vel', 10)
-
-        # メッセージの初期化
-        self.goal_pose = None
-        self.current_pose = None
-        self.radius = self.get_parameter('radius').value
-        self.length = self.get_parameter('length').value
-        # 前回のコールバック時間
-        self.last_time = self.get_clock().now()
 
     def goal_pose_callback(self, msg):
         self.goal_pose = msg
@@ -75,8 +91,18 @@ class VelocityController(Node):
 
     def current_pose_callback(self, msg):
         self.current_pose = msg
-        self.get_logger().info('current_pose: %s' % self.current_pose)
+        self.p_gain_x = self.get_parameter('p_gain_x').value
+        self.i_gain_x = self.get_parameter('i_gain_x').value
+        self.p_gain_y = self.get_parameter('p_gain_y').value
+        self.i_gain_y = self.get_parameter('i_gain_y').value
+        self.p_gain_theta = self.get_parameter('p_gain_theta').value
+        self.i_gain_theta = self.get_parameter('i_gain_theta').value
+        self.controller_x.set_gains(self.p_gain_x, self.i_gain_x)
+        self.controller_y.set_gains(self.p_gain_y, self.i_gain_y)
+        self.controller_theta.set_gains(self.p_gain_theta, self.i_gain_theta)
+        # self.get_logger().info('current_pose: %s' % self.current_pose)
         self.calculate_and_publish_velocity()
+        self.get_logger().info('kp_x: %s, ki_x: %s, kp_y: %s, ki_y: %s, kp_theta: %s, ki_theta: %s' % (self.p_gain_x, self.i_gain_x, self.p_gain_y, self.i_gain_y, self.p_gain_theta, self.i_gain_theta))
 
     def calculate_and_publish_velocity(self):
         current_time = self.get_clock().now()

@@ -5,7 +5,7 @@ calc_vel:
     p_gain_y: 0.1
     i_gain_y: 0.01
     p_gain_theta: 0.1
-    i_gain_theta: 0.01
-    max_input: 120
+    i_gain_theta: 0.001
+    max_input: 30.0
     radius: 0.050
     length: 0.400
