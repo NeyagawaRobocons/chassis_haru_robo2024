@@ -1,0 +1,24 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/tonto/ROS2_ws/install/pc_robot_controller/include/**",
+        "/home/tonto/ROS2_ws/install/nucleo_agent/include/**",
+        "/opt/ros/humble/include/**",
+        "/home/tonto/ROS2_ws/src/nucleo_agent/include/**",
+        "/home/tonto/ROS2_ws/src/pc_robot_controller/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
