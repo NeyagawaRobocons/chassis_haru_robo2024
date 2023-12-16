@@ -52,9 +52,9 @@ def main():
         [sg.Text('I Gain Y'), sg.Slider(range=(0, 10), resolution=0.1, orientation='h', size=(34, 20), key='i_gain_y')],
         [sg.Text('P Gain Theta'), sg.Slider(range=(0, 10), resolution=0.1, orientation='h', size=(34, 20), key='p_gain_theta')],
         [sg.Text('I Gain Theta'), sg.Slider(range=(0, 10), resolution=0.1, orientation='h', size=(34, 20), key='i_gain_theta')],
-        [sg.Text('Max Input'), sg.InputText('30.0', key='max_input')],
-        [sg.Text('Radius'), sg.InputText('0.050', key='radius')],
-        [sg.Text('Length'), sg.InputText('0.400', key='length')],
+        [sg.Text('Max Input'), sg.InputText('30.0', key='max_input'), sg.Text('rad/s')],
+        [sg.Text('Radius'), sg.InputText('0.051', key='radius'), sg.Text('m')],
+        [sg.Text('Length'), sg.InputText('0.295', key='length'), sg.Text('m')],
         [sg.Button('Apply'), sg.Button('Save'), sg.Button('Exit')]
     ]
 
