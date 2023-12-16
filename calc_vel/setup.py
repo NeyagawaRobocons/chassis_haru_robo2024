@@ -14,6 +14,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share', package_name), glob('./launch/*.launch.xml')),
         (os.path.join('share', package_name), glob('./launch/*.launch.py')),
+        (os.path.join('share', package_name), glob('./yaml/*.yaml')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -29,7 +30,8 @@ setup(
             'localize_node = calc_vel.localize_node:main',
             'robot_tf_node = calc_vel.robot_tf_node:main',
             'goal_tf_node = calc_vel.goal_tf_node:main',
-            'PI_simulator = calc_vel.pose_PI_simulator:main'
+            'PI_simulator = calc_vel.pose_PI_simulator:main',
+            'param_control_node = calc_vel.param_control_node:main'
         ],
     },
 )

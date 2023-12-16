@@ -34,12 +34,12 @@ class VelocityController(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('p_gain_x', 1.0),
-                ('i_gain_x', 0.1),
-                ('p_gain_y', 1.0),
-                ('i_gain_y', 0.1),
-                ('p_gain_theta', 0.1),
-                ('i_gain_theta', 0.01),
+                ('p_gain_x', 2.0),
+                ('i_gain_x', 0.0),
+                ('p_gain_y', 2.0),
+                ('i_gain_y', 0.0),
+                ('p_gain_theta', 0.0),
+                ('i_gain_theta', 0.0),
                 ('max_input', 30.0),
                 ('radius', 0.050), # タイヤ半径
                 ('length', 0.400), # タイヤの設置半径
