@@ -1,0 +1,17 @@
+{
+    "ros.distro": "humble",
+    "python.autoComplete.extraPaths": [
+        "/home/tonto/ROS2_ws/install/robot_param_identifier/lib/python3.10/site-packages",
+        "/home/tonto/ROS2_ws/install/nucleo_agent/local/lib/python3.10/dist-packages",
+        "/home/tonto/ROS2_ws/install/calc_vel/lib/python3.10/site-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/tonto/ROS2_ws/install/robot_param_identifier/lib/python3.10/site-packages",
+        "/home/tonto/ROS2_ws/install/nucleo_agent/local/lib/python3.10/dist-packages",
+        "/home/tonto/ROS2_ws/install/calc_vel/lib/python3.10/site-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ]
+}
