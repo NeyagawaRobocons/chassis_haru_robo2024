@@ -1,3 +1,0 @@
-<launch>
-    <node name="calc_vel" pkg="calc_vel" exec="calc_vel"/>
-</launch>
