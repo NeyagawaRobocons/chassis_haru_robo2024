@@ -3,13 +3,16 @@
 <package format="3">
   <name>path_server</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>robot path server</description>
   <maintainer email="tnt.kosen2423@gmail.com">tonto2423</maintainer>
-  <license>TODO: License declaration</license>
+  <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclcpp</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <member_of_group>rosidl_interface_packages</member_of_group>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
