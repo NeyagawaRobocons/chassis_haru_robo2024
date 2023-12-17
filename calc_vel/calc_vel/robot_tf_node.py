@@ -7,9 +7,12 @@ from geometry_msgs.msg import TransformStamped
 class PoseSubscriber(Node):
     def __init__(self):
         super().__init__('robot_tf_node')
+        self.declare_parameter('header_frame_id', 'map')
+        self.declare_parameter('child_frame_id', 'base_link')
+        self.declare_parameter('topic_name', '/robot_pose')
         self.subscription = self.create_subscription(
             PoseStamped,
-            '/robot_pose',
+            self.get_parameter('topic_name').get_parameter_value().string_value,
             self.handle_robot_pose,
             10)
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
@@ -21,8 +24,8 @@ class PoseSubscriber(Node):
 
         # ヘッダの設定
         transform.header.stamp = self.get_clock().now().to_msg()
-        transform.header.frame_id = 'map'
-        transform.child_frame_id = 'base_link'
+        transform.header.frame_id = self.get_parameter('header_frame_id').get_parameter_value().string_value
+        transform.child_frame_id = self.get_parameter('child_frame_id').get_parameter_value().string_value
 
         # 位置の設定
         transform.transform.translation.x = msg.pose.position.x
