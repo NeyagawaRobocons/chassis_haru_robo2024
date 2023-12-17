@@ -73,5 +73,5 @@ Vector3 velocity
 # 位置・姿勢・速度ベクトルを含んだ経路
 
 Header header
-PoseWithVelStapmed[ ] pose
+PoseWithVelStapmed[ ] poses
 ```
