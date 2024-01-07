@@ -103,7 +103,6 @@ walls = [
     [[0, 4], [0, 0]]
 ]
 ```
-
 - ノード名：pure_pursuit_node
 - 役割：Pure Pursuit法で経路追従制御をするための速度入力を決定する
 - 入力：
@@ -115,7 +114,6 @@ walls = [
   - float robot_size: ロボットのサイズ(一辺の長さ) [m] ※ロボットは正方形と仮定
   - float speed: ロボットの出す速さ [m/s]
   - float lookahead_distance: 先行点までの距離 [m]
-
 - ノード名：calc_vel
 - 役割：v_x, v_y, omegaを3輪オムニホイールの目標速度に変換する
 - 入力：
