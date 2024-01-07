@@ -90,6 +90,7 @@ PoseWithVelStapmed[ ] poses
   - フェンスの情報 -> rosparamから
 - 出力：
   - 経路情報
+- 言語：Python
 - パラメータ：
   - walls: フェンスのデータ
     - 形式: 各直線の始点、終点のリスト
