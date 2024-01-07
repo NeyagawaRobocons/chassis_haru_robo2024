@@ -75,3 +75,53 @@ Vector3 velocity
 Header header
 PoseWithVelStapmed[ ] poses
 ```
+
+## 第二段階
+第二段階の開発は
+- Pure Pursuit法の実装
+- ポテンシャル法の実装
+- LiDARの追加
+の順に行う。
+
+### Pure Pursuit法
+- ノード名：path_server
+- 役割：フェンスのデータから経路を生成し、pure_pursuit_nodeへ渡す
+- 入力：
+  - フェンスの情報 -> rosparamから
+- 出力：
+  - 経路情報
+- パラメータ：
+  - walls: フェンスのデータ
+    - 形式: 各直線の始点、終点のリスト
+    - 例:
+```
+walls = [
+    [[0, 0], [4, 0]],
+    [[4, 0], [4, 4]],
+    [[4, 4], [0, 4]],
+    [[0, 4], [0, 0]]
+]
+```
+
+- ノード名：pure_pursuit_node
+- 役割：Pure Pursuit法で経路追従制御をするための速度入力を決定する
+- 入力：
+  - 経路情報: /robot_pathトピック (Chassis_HaruRobo2024/OrientedPath型：**自作型**)
+  - 自己位置: /robot_poseトピック (geometry_msgs/Pose型)
+- 出力：
+  - ロボットの速度: /robot_velトピック(geometry_msgs/msg/Twist型)
+- パラメータ：
+  - float robot_size: ロボットのサイズ(一辺の長さ) [m] ※ロボットは正方形と仮定
+  - float speed: ロボットの出す速さ [m/s]
+  - float lookahead_distance: 先行点までの距離 [m]
+
+- ノード名：calc_vel
+- 役割：v_x, v_y, omegaを3輪オムニホイールの目標速度に変換する
+- 入力：
+  - ロボットの速度: /robot_velトピック(geometry_msgs/msg/Twist型)
+- 出力：
+  - /input_velトピック (std_msgs/Float64Array型)：各タイヤの目標角速度 (長さ3の配列)
+- 言語：C++
+- パラメータ：
+  - double radius: タイヤ半径
+  - double length: タイヤの設置半径
