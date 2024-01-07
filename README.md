@@ -34,7 +34,7 @@
 - path_server (※**第二段階から実装**): 
   - 役割: 目標の経路(姿勢情報、速度情報込み)をトピックに投げるノード
   - 入力: 未定、計算するかも
-  - 出力: /robot_pathトピック (chassis_haru_robo2024/OrientedPath型: **自作型**): 経路
+  - 出力: /robot_pathトピック (path_server/OrientedPath型: **自作型**): 経路
 - calc_vel (名称は適宜変更): 
   - 役割: 経路情報と自己位置を比較して、速度指令を計算するノード
   - 第零目標時点(※**図には入ってない**): 
@@ -43,7 +43,7 @@
     - 出力: /input_velトピック (std_msgs/Float64Array型): 各タイヤの目標角速度 (長さ3の配列)
   - @第二目標時点: 
     - 処理: Pure Pursuit法で目標速度を計算
-    - 入力: /robot_pathトピック (chassis_haru_robo2024/OrientedPath型: **自作型**): 経路
+    - 入力: /robot_pathトピック (path_server/OrientedPath型: **自作型**): 経路
     - 出力: /input_velトピック (std_msgs/Float64Array型): 各タイヤの目標角速度 (長さ3の配列)
    
 ## 自作のトピック型について
@@ -57,8 +57,8 @@ float64[3] rotation # 各計測輪の角変位
 float64[3] angular_vel # 各計測輪の角速度
 ```
 
-- chassis_haru_robo2024/PoseWithVel型
-  - 説明: chassis_haru_robo2024/OrientedPath型を定義するための型。ある瞬間の位置・姿勢・速度ベクトルとタイムスタンプを提供する
+- path_server/PoseWithVel型
+  - 説明: path_server/OrientedPath型を定義するための型。ある瞬間の位置・姿勢・速度ベクトルとタイムスタンプを提供する
 ```
 # 位置・姿勢・速度ベクトル
 
@@ -66,7 +66,7 @@ geometry_msgs/Pose pose
 geometry_msgs/Vector3 velocity
 ```
 
-- chassis_haru_robo2024/OrientedPath型
+- path_server/OrientedPath型
   - 説明: 位置・姿勢・速度ベクトルを含んだ経路を配列で提供する
 ```
 # 位置・姿勢・速度ベクトルを含んだ経路
@@ -88,7 +88,7 @@ path_server/PoseWithVel[] poses
 - 入力:  
   - フェンスの情報 -> rosparamから
 - 出力:  
-  - 経路情報: /robot_pathトピック (chassis_haru_robo2024/OrientedPath型: **自作型**)
+  - 経路情報: /robot_pathトピック (path_server/OrientedPath型: **自作型**)
 - 言語: Python
 - パラメータ:  
   - walls: フェンスのデータ
@@ -105,7 +105,7 @@ walls = [
 - ノード名: pure_pursuit_node
 - 役割: Pure Pursuit法で経路追従制御をするための速度入力を決定する
 - 入力:  
-  - 経路情報: /robot_pathトピック (chassis_haru_robo2024/OrientedPath型: **自作型**)
+  - 経路情報: /robot_pathトピック (path_server/OrientedPath型: **自作型**)
   - 自己位置: /robot_poseトピック (geometry_msgs/Pose型)
 - 出力:  
   - ロボットの速度: /robot_velトピック(geometry_msgs/msg/Twist型)
