@@ -7,11 +7,11 @@ from ament_index_python.packages import get_package_share_directory
 import numpy as np
 
 def generate_launch_description():
-    # パラメータファイルのパスを取得
-    param_file = os.path.join(
-        get_package_share_directory('calc_vel'),  # 'your_package_name'を実際のパッケージ名に置き換える
-        'pi_params.yaml'  # 'your_param_file.yaml'を実際のパラメータファイル名に置き換える
-    )
+    # # パラメータファイルのパスを取得
+    # param_file = os.path.join(
+    #     get_package_share_directory('calc_vel'),  # 'your_package_name'を実際のパッケージ名に置き換える
+    #     'pi_params.yaml'  # 'your_param_file.yaml'を実際のパラメータファイル名に置き換える
+    # )
 
     return LaunchDescription([
         # localize_nodeの起動
@@ -47,18 +47,6 @@ def generate_launch_description():
             executable='PI_simulator', # pose_PI_simulatorの実行可能ファイル名
             name='pose_PI_simulator'        # pose_PI_simulatorのノード名
         ),
-        # # pure_pursuit_nodeの起動
-        # Node(
-        #     package='pure_pursuit',  # pure_pursuit_nodeが属するパッケージ名
-        #     executable='pure_pursuit_node', # pure_pursuit_nodeの実行可能ファイル名
-        #     name='pure_pursuit_node',        # pure_pursuit_nodeのノード名
-        # ),
-        # # calc_wheel_vel_nodeの起動
-        # Node(
-        #     package='pure_pursuit',  # calc_wheel_vel_nodeが属するパッケージ名
-        #     executable='calc_wheel_vel_node', # calc_wheel_vel_nodeの実行可能ファイル名
-        #     name='calc_vel_node'        # calc_wheel_vel_nodeのノード名
-        # ),
         # rviz2の起動
         Node(
             package='rviz2',
@@ -96,4 +84,15 @@ def generate_launch_description():
             }],
             output='screen'
         ),
+        Node(
+            package='pure_pursuit',
+            executable='pure_pursuit_node',
+            name='pure_pursuit_node',
+            parameters=[{
+                'on_way_points': [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]],
+                'speed': 0.5, # [m/s]
+                'lookahead_distance': 0.1 # [m]
+            }],
+            output='screen'
+        )
     ])

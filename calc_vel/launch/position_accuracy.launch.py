@@ -41,24 +41,16 @@ def generate_launch_description():
                 {'topic_name': 'goal_pose'}
             ]
         ),
-        # pose_PI_simulatorの起動
         Node(
-            package='calc_vel',  # pose_PI_simulatorが属するパッケージ名
-            executable='PI_simulator', # pose_PI_simulatorの実行可能ファイル名
-            name='pose_PI_simulator'        # pose_PI_simulatorのノード名
+            package='odometry_calculator', 
+            executable='odometry_node',
+            name='odometry_node'
+        ), 
+        Node(
+            package='nucleo_agent', 
+            executable='nucleo_agent_node',
+            name='nuceo_agent_node'
         ),
-        # # pure_pursuit_nodeの起動
-        # Node(
-        #     package='pure_pursuit',  # pure_pursuit_nodeが属するパッケージ名
-        #     executable='pure_pursuit_node', # pure_pursuit_nodeの実行可能ファイル名
-        #     name='pure_pursuit_node',        # pure_pursuit_nodeのノード名
-        # ),
-        # # calc_wheel_vel_nodeの起動
-        # Node(
-        #     package='pure_pursuit',  # calc_wheel_vel_nodeが属するパッケージ名
-        #     executable='calc_wheel_vel_node', # calc_wheel_vel_nodeの実行可能ファイル名
-        #     name='calc_vel_node'        # calc_wheel_vel_nodeのノード名
-        # ),
         # rviz2の起動
         Node(
             package='rviz2',
