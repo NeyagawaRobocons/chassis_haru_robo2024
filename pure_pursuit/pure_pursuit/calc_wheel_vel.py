@@ -19,11 +19,14 @@ class CalcVelNode(Node):
         self.radius = 0.1  # 10cm
         self.length = 0.2  # 20cm
 
+        self.get_logger().info("calc_vel_node has been started")
+
     def velocity_callback(self, msg: Twist):
         # Twistメッセージからロボットの速度と角速度を取得
         v_x = msg.linear.x
         v_y = msg.linear.y
         omega = msg.angular.z
+        self.get_logger().info("v_x: %f, v_y: %f, omega: %f" % (v_x, v_y, omega))
 
         # 3輪のホイール速度を計算
         omega_1, omega_2, omega_3 = self.calc_3wheel_vel(

@@ -21,12 +21,13 @@ class VelocityCalculator(Node):
         # パラメータの宣言
         # この行を変更
         # self.declare_parameter('on_way_points', [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]])
-        self.declare_parameter('speed', 1.0)
-        self.declare_parameter('lookahead_distance', 0.5)
+        self.declare_parameter('speed', 2.0)
+        self.declare_parameter('lookahead_distance', 0.3)
 
         # パラメータの取得
         # self.on_way_points: list[float] = self.get_parameter('on_way_points').value
-        self.on_way_points: list[float] = [[0.0, 0.0], [0.0, 1.0], [1.2, 1.0], [1.2, 2.0]]
+        # self.on_way_points: list[float] = [[0.0, 0.0], [0.0, 1.0], [1.2, 1.0], [1.2, 2.0]]
+        self.on_way_points: list[float] = [[0.0, 0.0], [0.0, 1.0], [1.0, 1.0], [1.0, 2.0], [0.0, 2.0], [0.0, 0.0]]
         self.speed: float = self.get_parameter('speed').value
         self.lookahead_distance: float = self.get_parameter('lookahead_distance').value
 
@@ -71,8 +72,19 @@ class VelocityCalculator(Node):
             else:
                 # 速度ベクトルがNoneの場合は、ログに警告を出力し、何もしない
                 self.get_logger().warn("Velocity vector is None, cannot publish Twist message.")
+                # publish Twist message with zero velocity
+                twist_msg = Twist()
+                twist_msg.linear.x = 0.0
+                twist_msg.linear.y = 0.0
+                self.publisher.publish(twist_msg)
         else:
             self.get_logger().info("waiting for command")
+            # publish Twist message with zero velocity
+            twist_msg = Twist()
+            twist_msg.linear.x = 0.0
+            twist_msg.linear.y = 0.0
+            self.publisher.publish(twist_msg)
+        self.publish_path(self.path_points)
 
     def generate_path_data(self, on_way_points: list[float]) -> None:
         # on_way_points から NumPy 配列に変換
