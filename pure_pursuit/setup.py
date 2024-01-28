@@ -12,7 +12,9 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        (os.path.join('share', package_name, 'launch'), glob('./launch/*.py'))
+        (os.path.join('share', package_name), glob('launch/*.launch.py')),
+        (os.path.join('share', package_name), glob('./yaml/*.yaml')),
+        (os.path.join('share', package_name), glob('./rviz/*.rviz')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -27,6 +29,11 @@ setup(
             'pure_pursuit_PI = pure_pursuit.pure_pursuit_PI:main',
             'calc_wheel_vel_node = pure_pursuit.calc_wheel_vel:main',
             'path_view_node = pure_pursuit.robot_path_view:main', 
+            'debug_vel = pure_pursuit.debug_vel:main', 
+            'param_controller = pure_pursuit.param_controller:main', 
+            'mecha_state_publisher = pure_pursuit.mecha_state_publisher:main',
+            'path_server = pure_pursuit.path_server:main',
+            'robot_manual_controller = pure_pursuit.robot_manual_controller:main',
         ],
     },
 )

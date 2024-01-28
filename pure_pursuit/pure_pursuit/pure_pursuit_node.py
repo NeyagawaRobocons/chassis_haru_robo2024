@@ -5,7 +5,7 @@ from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped, Twist
 from std_msgs.msg import Bool
 from nav_msgs.msg import Path
-from mecha_control.msg import PointAndMechaStateArray
+from pure_pursuit.msg import Path2DWithAngles
 
 class PurePursuitNode(Node):
     def __init__(self):
@@ -14,15 +14,15 @@ class PurePursuitNode(Node):
             PoseStamped, '/robot_pose', self.pose_callback, 10)
         self.publisher = self.create_publisher(Twist, '/robot_vel', 10)
         # Pathメッセージをパブリッシュするためのパブリッシャーの初期化
-        self.path_publisher = self.create_publisher(Path, '/robot_path', 10)
+        self.path_publisher = self.create_publisher(Path, '/robot_path_for_view', 10)
 
         # 動作制御のサブスクリプション
         self.subscription_control = self.create_subscription(
             Bool, '/robot_control', self.control_callback, 10)
         self.is_active = False  # 初期状態では停止
 
-        self.path_points_subscriber = self.create_subscription(
-            PointAndMechaStateArray, '/point_command', self.path_points_callback, 10)
+        self.path_subscriber = self.create_subscription(
+            Path2DWithAngles, '/robot_path', self.path_callback, 10)
 
         # パラメータの宣言
         # この行を変更
@@ -30,19 +30,18 @@ class PurePursuitNode(Node):
         self.declare_parameter('lookahead_distance', 0.3)
 
         # パラメータの取得
-        self.on_way_points: list[float] = [[0.0, 0.0], [0.0, 1.0], [1.2, 1.0], [1.2, 2.0]]
+        # self.on_way_points: list[float] = [[0.0, 0.0], [0.0, 1.0], [1.2, 1.0], [1.2, 2.0]]
         self.speed: float = self.get_parameter('speed').value
         self.lookahead_distance: float = self.get_parameter('lookahead_distance').value
 
         # メンバ変数
         self.path_points: np.ndarray = np.array([])
         self.tangents: np.ndarray = np.array([])
-        self.lookahead_point: np.ndarray = np.array([0.0, 0.0])
         self.current_path_index: int = -1 # 現在の経路のインデックス
 
         # 経路データと接ベクトルの生成
-        self.path_points, self.tangents = self.generate_path_data(self.on_way_points)
-        self.publish_path(self.path_points)
+        # self.path_points, self.tangents = self.generate_path_data(self.on_way_points)
+        # self.publish_path(self.path_points)
 
         self.get_logger().info("pure_pursuit_node has been started")
 
@@ -51,6 +50,30 @@ class PurePursuitNode(Node):
         # self.get_logger().info("control_callback")
         self.is_active = msg.data
 
+    def path_callback(self, msg: Path2DWithAngles):
+        if msg.path_with_angles == []:
+            self.get_logger().warn("path_callback: path_with_angles is empty")
+            return
+
+        self.path_points = np.array([[point.x, point.y] for point in msg.path_with_angles])
+        self.path_angles = np.array([point.theta for point in msg.path_with_angles])
+
+        # 接ベクトルの計算
+        tangents = [
+            (self.path_points[i + 1] - self.path_points[i]) / np.linalg.norm(self.path_points[i + 1] - self.path_points[i])
+            if np.linalg.norm(self.path_points[i + 1] - self.path_points[i]) != 0 else np.zeros(2)
+            for i in range(len(self.path_points) - 1)
+        ]
+
+        # 最後の点のために最後の接ベクトルを追加
+        if len(self.path_points) > 1:
+            tangents.append(tangents[-1])
+
+        self.tangents = np.array(tangents)
+        
+        #　タンジェントの配列長を出力
+        self.get_logger().info("path_callback: len(tangents) = %s" % len(self.tangents))
+
     def pose_callback(self, msg: PoseStamped):
         if self.is_active:
             # 自己位置の取得
@@ -58,7 +81,7 @@ class PurePursuitNode(Node):
             theta = self.get_yaw(msg)
 
             # 先行点の計算
-            self.lookahead_point = self.calculate_lookahead_point(self.path_points, self.tangents, current_point, self.lookahead_point)
+            self.lookahead_point = self.calculate_lookahead_point(self.path_points, self.tangents, current_point)
 
             # 速度ベクトルの計算
             velocity_vector = self.calculate_velocity_vector(self.lookahead_point, current_point)
@@ -87,39 +110,6 @@ class PurePursuitNode(Node):
             twist_msg.linear.y = 0.0
             self.publisher.publish(twist_msg)
         self.publish_path(self.path_points)
-
-    def path_points_callback(self, msg: PointAndMechaStateArray):
-        for point in msg.points:
-            self.on_way_points.append([point.x, point.y])
-        self.path_points, self.tangents = self.generate_path_data(self.on_way_points)
-        self.publish_path(self.path_points)
-        self.get_logger().info("path_points_callback")
-
-    def generate_path_data(self, on_way_points: list[float]) -> tuple[np.ndarray, np.ndarray]:
-        # on_way_points から NumPy 配列に変換
-        path_points = np.array(on_way_points)
-
-        # 経路と接ベクトルを生成
-        path_x = []
-        path_y = []
-        tangents = []
-
-        for i in range(len(path_points) - 1):
-            start_point = path_points[i]
-            end_point = path_points[i + 1]
-            
-            # 各辺の始点から終点への直線を生成
-            x_values = np.linspace(start_point[0], end_point[0], num=20, endpoint=False)
-            y_values = np.linspace(start_point[1], end_point[1], num=20, endpoint=False)
-            path_x.extend(x_values)
-            path_y.extend(y_values)
-
-            # 接ベクトル（各辺に沿ったベクトル）を生成
-            tangent = (end_point - start_point) / np.linalg.norm(end_point - start_point)
-            for _ in range(20):
-                tangents.append(tangent)
-
-        return np.array([path_x, path_y]).T, tangents
 
     def publish_path(self, path_points):
         # 経路データをPathメッセージに変換
@@ -163,7 +153,6 @@ class PurePursuitNode(Node):
 
             # 内積が正で、かつ最短距離でかつ一つ前の先行点よりもインデックスが大きい点であれば更新
             if dot_product > 0 and distance_to_path < min_distance:
-            # and i > self.current_path_index:
                 min_distance = distance_to_path
                 closest_point = path_point
                 closest_tangent = tangent

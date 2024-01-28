@@ -13,9 +13,16 @@ find_package(rclpy REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(mecha_control REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
+
+find_package(rosidl_default_generators REQUIRED)
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/PointAndAngle.msg"
+  "msg/Path2DWithAngles.msg"
+)
 
 # #-- for pure_pursuit_node
 # add_executable(pure_pursuit_node src/pure_pursuit_node.cpp)
@@ -52,6 +59,11 @@ install(PROGRAMS
   pure_pursuit/pure_pursuit_PI.py
   pure_pursuit/calc_wheel_vel.py
   pure_pursuit/robot_path_view.py
+  pure_pursuit/debug_vel.py
+  pure_pursuit/param_controller.py
+  pure_pursuit/mecha_state_publisher.py
+  pure_pursuit/path_server.py
+  pure_pursuit/robot_manual_controller.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

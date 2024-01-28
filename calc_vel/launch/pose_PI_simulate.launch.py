@@ -33,8 +33,8 @@ def generate_launch_description():
         ),
         Node(
             package='calc_vel',           # robot_tf_nodeが属するパッケージ名
-            executable='goal_tf_node',     # robot_tf_nodeの実行可能ファイル名
-            name='robot_tf_node',           # robot_tf_nodeのノード名
+            executable='robot_tf_node',     # robot_tf_nodeの実行可能ファイル名
+            name='goal_tf_node',           # robot_tf_nodeのノード名
             parameters=[
                 {'header_frame_id': 'map'},
                 {'child_frame_id': 'goal_link'},
