@@ -1,3 +1,5 @@
+// 特筆事項：
+// オドメトリは-43.18 mmだけy軸方向にずれている
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
@@ -37,7 +39,12 @@ private:
     if (!current_odometry_pose_) {
       // 最初のodometry_poseを受信した場合
       current_odometry_pose_ = msg;
-      current_robot_pose_ = msg;
+      current_robot_pose_->header = msg->header;
+      current_robot_pose_->pose.position.x = msg->pose.position.x;
+      current_robot_pose_->pose.position.y = msg->pose.position.y - 0.04318; // オドメトリのy軸方向のずれを補正
+      current_robot_pose_->pose.position.z = msg->pose.position.z;
+      current_robot_pose_->pose.orientation = msg->pose.orientation;
+      robot_poses_.push_back(*current_robot_pose_); // オドメトリポーズをリストに追加
       return;
     }
 
