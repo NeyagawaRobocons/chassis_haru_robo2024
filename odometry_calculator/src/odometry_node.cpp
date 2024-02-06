@@ -9,7 +9,8 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <geometry_msgs/msg/quaternion.h>
 
-Odometry odom(0.02504, 0.16218, 0.0, 0.0, 0.0);
+// Odometry odom(0.02504, 0.16218, 0.0, 0.0, 0.0);
+Odometry odom(0.02504, 0.1689, 0.0, 0.0, 0.0);
 
 void OdomPubSub::_topic_callback(const nucleo_agent::msg::OdometerData::SharedPtr msg) {
     // メッセージの内容をログに出力

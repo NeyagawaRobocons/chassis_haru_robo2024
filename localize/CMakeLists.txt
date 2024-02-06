@@ -6,11 +6,18 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 # find dependencies
-find_package(ament_cmake REQUIRED)
+# find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_auto REQUIRED)
+# find_package(ament_lint_auto REQUIRED)
+ament_auto_find_build_dependencies()
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
+# tf2
+find_package(tf2 REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(tf2_eigen REQUIRED)
 
-add_executable(localize_node src/localize_node.cpp)
+ament_auto_add_executable(localize_node src/localize_node.cpp)
 target_include_directories(localize_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
@@ -19,9 +26,23 @@ ament_target_dependencies(
   localize_node
   "rclcpp"
   "geometry_msgs"
+  "tf2"
+  "tf2_geometry_msgs"
+  "tf2_eigen"
 )
 
-add_executable(timestamp_publisher_node src/mcl_pose_test.cpp)
+ament_auto_add_executable(tempo_localize_node src/emcl2_posestamped.cpp)
+target_include_directories(tempo_localize_node PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(tempo_localize_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+ament_target_dependencies(
+  tempo_localize_node
+  "rclcpp"
+  "geometry_msgs"
+)
+
+ament_auto_add_executable(timestamp_publisher_node src/mcl_pose_test.cpp)
 target_include_directories(timestamp_publisher_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
@@ -33,7 +54,7 @@ ament_target_dependencies(
 )
 
 install(TARGETS localize_node
-  DESTINATION lib/${PROJECT_NAME})
+DESTINATION lib/${PROJECT_NAME})
 
 install(TARGETS
   timestamp_publisher_node
@@ -52,4 +73,10 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-ament_package()
+ament_auto_package(
+  INSTALL_TO_SHARE
+  launch
+  yaml
+)
+
+# ament_package()
