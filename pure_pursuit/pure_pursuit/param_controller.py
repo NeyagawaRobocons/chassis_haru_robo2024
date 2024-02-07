@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import PySimpleGUI as sg
 import rclpy
 from rclpy.node import Node
@@ -7,20 +8,19 @@ import yaml
 from ament_index_python.packages import get_package_share_directory
 import os
 
-# ROS 2パッケージ名
-package_name = 'calc_vel'
+# ROS 2パッケージ名を設定
+pure_pursuit_package = 'pure_pursuit'
 
 # パッケージの共有ディレクトリを取得
-package_share_directory = get_package_share_directory(package_name)
+pure_pursuit_directory = get_package_share_directory(pure_pursuit_package)
 
 # YAMLファイルへのパスを組み立て
-param_file_path = os.path.join(package_share_directory, 'pi_params.yaml')
+pure_pursuit_param_path = os.path.join(pure_pursuit_directory, 'pure_pursuit_params.yaml')
+pi_controller_param_path = os.path.join(pure_pursuit_directory, 'pi_controller_params.yaml')
 
 class ParamControlNode(Node):
     def __init__(self):
         super().__init__('param_control_node')
-       # ターゲットノードの名前を指定します。
-        self.target_node_name = 'calc_vel'
 
     def set_remote_parameter(self, name, value):
         # パラメータクライアントを作成
@@ -38,15 +38,15 @@ class ParamControlNode(Node):
         # リクエストを送信
         future = parameter_client.call_async(param_request)
         return future
-    
-def load_params_from_yaml(file_path):
+
+def load_params_from_yaml(file_path, node_name):
     with open(file_path, 'r') as file:
         params = yaml.load(file, Loader=yaml.FullLoader)
-    return params['calc_vel']['ros__parameters']
+    return params[node_name]['ros__parameters']
 
 # YAMLファイルからパラメータを読み込む
-params = load_params_from_yaml(param_file_path)
-
+pure_pursuit_params = load_params_from_yaml(pure_pursuit_param_path, 'pure_pursuit_node')
+pi_controller_params = load_params_from_yaml(pi_controller_param_path, 'angle_PI_controller')
 
 def main():
     # ROS 2ノードの初期化
@@ -55,21 +55,22 @@ def main():
 
     # UIレイアウトの定義
     layout = [
-        [sg.Text('P Gain X'), sg.Slider(range=(0, 10), resolution=0.1, orientation='h', size=(34, 20), key='p_gain_x', default_value=params['p_gain_x'])],
-        [sg.Text('I Gain X'), sg.Slider(range=(0, 10), resolution=0.1, orientation='h', size=(34, 20), key='i_gain_x', default_value=params['i_gain_x'])],
-        [sg.Text('P Gain Y'), sg.Slider(range=(0, 10), resolution=0.1, orientation='h', size=(34, 20), key='p_gain_y', default_value=params['p_gain_y'])],
-        [sg.Text('I Gain Y'), sg.Slider(range=(0, 10), resolution=0.1, orientation='h', size=(34, 20), key='i_gain_y', default_value=params['i_gain_y'])],
-        [sg.Text('P Gain Theta'), sg.Slider(range=(0, 2), resolution=0.01, orientation='h', size=(34, 20), key='p_gain_theta', default_value=params['p_gain_theta'])],
-        [sg.Text('I Gain Theta'), sg.Slider(range=(0, 0.5), resolution=0.001, orientation='h', size=(34, 20), key='i_gain_theta', default_value=params['i_gain_theta'])],
-        [sg.Text('Max Input'), sg.InputText(str(params['max_input']), key='max_input'), sg.Text('rad/s')],
-        [sg.Text('Radius'), sg.InputText(str(params['radius']), key='radius'), sg.Text('m')],
-        [sg.Text('Length'), sg.InputText(str(params['length']), key='length'), sg.Text('m')],
+        # pure_pursuit_node用のパラメータコントロール
+        [sg.Text('P Gain X'), sg.Slider(range=(0, 10), resolution=0.1, orientation='h', size=(34, 20), key='p_gain_x', default_value=pure_pursuit_params['p_gain_x'])],
+        [sg.Text('Speed'), sg.Slider(range=(0, 10), resolution=0.5, orientation='h', size=(34, 20), key='speed', default_value=pure_pursuit_params['speed'])],
+        [sg.Text('Lookahead Distance'), sg.Slider(range=(0.0, 2.0), resolution=0.1, orientation='h', size=(34, 20), key='lookahead_distance', default_value=pure_pursuit_params['lookahead_distance'])],
+        [sg.Text('Gain P'), sg.Slider(range=(0, 10), resolution=0.1, orientation='h', size=(34, 20), key='gain_p', default_value=pure_pursuit_params['gain_p'])],
+
+        # angle_PI_controller用のパラメータコントロール
+        [sg.Text('Angle Gain P'), sg.Slider(range=(0, 2), resolution=0.01, orientation='h', size=(34, 20), key='angle_gain_p', default_value=pi_controller_params['angle_gain_p'])],
+        [sg.Text('Angle Gain I'), sg.Slider(range=(0, 0.5), resolution=0.001, orientation='h', size=(34, 20), key='angle_gain_i', default_value=pi_controller_params['angle_gain_i'])],
+
+        # Apply、Save、Exitボタン
         [sg.Button('Apply'), sg.Button('Save'), sg.Button('Exit')]
     ]
 
-    # ウィンドウの作成
     window = sg.Window('PI Control Parameters', layout)
-
+    
     # イベントループ
     while True:
         event, values = window.read()
@@ -85,14 +86,17 @@ def main():
 
         elif event == 'Save':
             # パラメータを適切な型に変換
-            for key in ['p_gain_x', 'i_gain_x', 'p_gain_y', 'i_gain_y', 'p_gain_theta', 'i_gain_theta', 'max_input', 'radius', 'length']:
+            for key in ['speed', 'lookahead_distance', 'gain_p', 'angle_gain_p', 'angle_gain_i']:
                 if key in values:
                     values[key] = float(values[key])  # 文字列を数値に変換
-            # YAMLファイルへの保存処理をここに記述
-            # ファイルを開く
-            with open(param_file_path, 'w') as file:
-                yaml.dump({'calc_vel': {'ros__parameters': values}}, file)
-            param_node.get_logger().info('Saved!')
+                if key in ['speed', 'lookahead_distance', 'gain_p']:
+                    with open(pure_pursuit_param_path, 'w') as file:
+                        yaml.dump({'pure_pursuit_node': {'ros__parameters': values}}, file)
+                    param_node.get_logger().info('pure_pursuit params saved!')
+                elif key in ['angle_gain_p', 'angle_gain_i']:
+                    with open(pi_controller_param_path, 'w') as file:
+                        yaml.dump({'angle_PI_controller': {'ros__parameters': values}}, file)
+                    param_node.get_logger().info('angle_PI_controller params saved!')
 
     # ウィンドウを閉じる
     window.close()

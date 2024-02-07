@@ -1,6 +1,6 @@
 # description: 位置制御を行うノード
 # input1: 目標位置：/goal_poseトピック(geometry_msgs/msg/PoseStamped型)
-# input2: 現在位置：/robot_poseトピック(geometry_msgs/msg/Pose型)
+# input2: 現在位置：/robot_poseトピック(geometry_msgs/msg/PoseStamped型)
 # output: 速度指令：/input_velトピック(std_msgs/msg/Float64MultiArray型)
 # 計算: PI_controller_class.pyのPI_controllerクラスを使用
 # パラメータ: p_gain, i_gain -> yamlファイル(../yaml/pi_params.yaml)から読み込み
@@ -13,9 +13,11 @@ from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
 import math
 from std_msgs.msg import Float64MultiArray as Float64
-from .PI_controller_class import PI_controller # .をつけることで同じパッケージ内のファイルを読み込む
+from .PI_controller_class import PIController # .をつけることで同じパッケージ内のファイルを読み込む
 
-PI_controller = [PI_controller(), PI_controller(), PI_controller()]
+PI_controller = [PIController(kp=1, ki=0.10, max_input=10), 
+                 PIController(kp=1, ki=0.10, max_input=10), 
+                 PIController(kp=1, ki=0.10, max_input=10)]
 
 def get_yaw_from_pose(pose_stamped):
     orientation = pose_stamped.pose.orientation
@@ -60,7 +62,7 @@ class MinimalSubscriber(Node):
         self.pre_pose = PoseStamped() # 姿勢の格納
         self.dt = 0.0 # 制御周期
         self.max_vel = self.get_parameter('max_vel').get_parameter_value().double_value # 最大速度 [rad/s]
-        
+
         self.previous_time = self.get_clock().now().nanoseconds # 前回の時間
 
         self.get_logger().info('complete initialize')

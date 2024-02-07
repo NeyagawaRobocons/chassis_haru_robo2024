@@ -41,6 +41,16 @@ def generate_launch_description():
                 {'topic_name': 'goal_pose'}
             ]
         ),
+        Node(
+            package='calc_vel',           # robot_tf_nodeが属するパッケージ名
+            executable='robot_tf_node',     # robot_tf_nodeの実行可能ファイル名
+            name='odom_tf_node',           # robot_tf_nodeのノード名
+            parameters=[
+                {'header_frame_id': 'odom'},
+                {'child_frame_id': 'base_link'},
+                {'topic_name': 'odometry_pose'}
+            ]
+        ),
         # calc_velの起動
         Node(
             package='calc_vel',     # calc_velが属するパッケージ名
