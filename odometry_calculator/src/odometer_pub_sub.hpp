@@ -2,6 +2,7 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include "nucleo_agent/msg/odometer_data.hpp"
+#include "odometry_class.hpp"
 
 class OdomPubSub : public rclcpp::Node{
 private:
@@ -11,6 +12,9 @@ private:
     void _topic_callback(const nucleo_agent::msg::OdometerData::SharedPtr msg);
     void _initial_callback(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg);
     size_t count_;
+    double radius;
+    double length;
+    Odometry odom;
 
 public:
     OdomPubSub(

@@ -17,12 +17,14 @@ struct deltaPose2D {
 
 class Odometry {
 private:
-    const double radius;             // 車輪半径[m]
-    const double length;             // タイヤの配置半径[m]
+    double radius;             // 車輪半径[m]
+    double length;             // タイヤの配置半径[m]
     pose2D pose;                    // 姿勢
     double tire_angles[3] = {0.0};        // エンコーダの角変位
 
 public:
+    // デフォルトコンストラクタ
+    Odometry() : radius(0.02504), length(0.1689), pose({0.0, 0.0, 0.0}) {}
     // コンストラクタ
     Odometry(double _radius, double _len, double _x0, double _y0, double _theta0)
             : radius(_radius), length(_len), pose({_x0, _y0, _theta0}) {}
