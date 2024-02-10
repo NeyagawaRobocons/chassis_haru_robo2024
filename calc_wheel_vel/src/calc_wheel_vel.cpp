@@ -58,10 +58,10 @@ private:
     if (num_wheels == 4) { // default
       // ToDo: make this calculation correct
       input_vel.data.resize(4);
-      input_vel.data[0] = (v_x - v_y + length * omega) / radius; // left front
-      input_vel.data[1] = (v_x + v_y + length * omega) / radius; // right front
-      input_vel.data[2] = (v_x + v_y + length * omega) / radius; // right rear
-      input_vel.data[3] = (v_x - v_y + length * omega) / radius; // left rear
+      input_vel.data[0] = ((-v_x + v_y) / 1.4142135623730951 + length * omega) / radius; // left front
+      input_vel.data[1] = ((-v_x - v_y) / 1.4142135623730951 + length * omega) / radius; // right front
+      input_vel.data[2] = ((v_x - v_y) / 1.4142135623730951 + length * omega) / radius; // right rear
+      input_vel.data[3] = ((v_x + v_y) / 1.4142135623730951 + length * omega) / radius; // left rear
       return input_vel;
     }
     else if (num_wheels == 3) {
