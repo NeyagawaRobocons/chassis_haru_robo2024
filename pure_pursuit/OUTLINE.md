@@ -5,7 +5,7 @@
   - child_frame_id: `base_footprint` 
   - parent_frame_id: `map`
 
-_ `/path_and_angles` (action):
+- `/path_and_angles` (action):
   - description:
   - type: 
   - field:
