@@ -6,8 +6,13 @@
 
 ```python
 
-# シバン
-ライブラリのインポート
+#!/usr/bin/env python3
+import numpy as np
+from numpy.typing import NDArray
+import rclpy
+from rclpy.node import Node
+from geometry_msgs.msg import PoseStamped, Twist
+from pure_pursuit.msg import Path2DWithAngles
 
 class 経路追従クラス:
     def 初期化:
