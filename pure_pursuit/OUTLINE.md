@@ -6,8 +6,8 @@
   - parent_frame_id: `map`
 
 - `/path_and_angles` (action):
-  - description:
-  - type: 
+  - description: 経路データと経路上の特定の点のインデックスを渡し、特定の点を通過したというフィードバックをもらう。ゴールしたら結果が返ってくる。
+  - type: robot_master/msg/PathAndAngles
   - field:
     - goal: 
       - pure_pursuit/Path2DWithAngles path
