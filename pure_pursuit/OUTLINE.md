@@ -5,9 +5,9 @@
   - child_frame_id: `base_footprint` 
   - parent_frame_id: `map`
 
-- `/path_and_angles` (action):
+- `/path_and_feedback` (action):
   - description: 経路データと経路上の特定の点のインデックスを渡し、特定の点を通過したというフィードバックをもらう。ゴールしたら結果が返ってくる。
-  - type: robot_master/msg/PathAndAngles
+  - type: robot_master/msg/PathAndFeedback
   - field:
     - goal: 
       - pure_pursuit/Path2DWithAngles path
