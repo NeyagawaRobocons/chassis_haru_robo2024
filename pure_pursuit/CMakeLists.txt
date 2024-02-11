@@ -23,6 +23,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/PointAndAngle.msg"
   "msg/Path2DWithAngles.msg"
 )
+ament_export_dependencies(rosidl_default_runtime)
 
 # #-- for pure_pursuit_node
 # add_executable(pure_pursuit_node src/pure_pursuit_node.cpp)
