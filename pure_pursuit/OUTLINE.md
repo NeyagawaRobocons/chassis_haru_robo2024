@@ -4,13 +4,17 @@
   - description: get the pose of robot
   - child_frame_id: `base_footprint` 
   - parent_frame_id: `map`
+
 _ `/path_and_angles` (action):
   - description:
   - type: 
   - field:
-    - 
-    - 
-    - 
+    - goal: 
+      - pure_pursuit/Path2DWithAngles path
+      - int32[] index
+    - result: bool goal
+    - feedback: int32 pass_index
+
 ## output
 - `/robot_vel` (topic):
   - description:
