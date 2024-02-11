@@ -1,7 +1,24 @@
 # outline of pure_puresuit_node.py
 ## input
+- `/tf` (topic):
+  - description: get the pose of robot
+  - child_frame_id: `base_footprint` 
+  - parent_frame_id: `map`
+_ `/path_and_angles` (action):
+  - description:
+  - type: 
+  - field:
+    - 
+    - 
+    - 
 ## output
+- `/robot_vel` (topic):
+  - description:
+  - type: geometry_msgs/msg/Twist
+
 ## parameters
+- ``:
+
 ## algorithm
 
 ```python
