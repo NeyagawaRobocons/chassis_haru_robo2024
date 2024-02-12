@@ -17,18 +17,44 @@
 
 - `/path_and_feedback` (action):
   - description: 経路データと経路上の特定の点のインデックスを渡し、特定の点を通過したというフィードバックをもらう。ゴールしたら結果が返ってくる。
+  - node: `robot_master_node`s
   - type: robot_master/msg/PathAndFeedback
-  - field:
-    - goal: 
-      - pure_pursuit/Path2DWithAngles path
-      - int32[] index
-    - result: bool goal
-    - feedback: int32 pass_index
 
 ## output
 - `/robot_vel` (topic):
   - description:
   - type: geometry_msgs/msg/Twist
+
+## original message types
+- `pure_pursuit/Path2DWithAngles`:
+  - description: 経路データと経路上の特定の点のインデックスを渡す
+  - field:
+    - pure_pursuit/PointAndAngle[] path_with_angles
+
+- `pure_pursuit/PointAndAngle`:
+  - description: 経路データと経路上の特定の点のインデックスを渡す
+  - field:
+    - float32 x
+    - float32 y
+    - float32 angle
+
+- `robot_master/PathAndFeedback`:
+  - description: 経路データと経路上の特定の点のインデックスを渡し、特定の点を通過したというフィードバックをもらう。ゴールしたら結果が返ってくる。
+  - field:
+
+```
+# パスとフィードバックのデータ
+
+# ゴール定義
+pure_pursuit/Path2DWithAngles path_with_angles
+int32[] feedback_indices
+---
+# 結果定義
+int32 final_index
+---
+# フィードバック定義
+int32 current_index
+```
 
 ## parameters
 <!-- 表で示す -->
