@@ -5,6 +5,16 @@
   - child_frame_id: `base_footprint` 
   - parent_frame_id: `map`
 
+- `/odometry_pose` (topic):
+  - description: get the pose of robot by odometry. use it for the timing of get tf pose
+  - node: `odometry_node`
+  - type: geometry_msgs/msg/PoseStamped
+
+- `/mcl_pose` (topic):
+  - description: get the pose of robot by mcl. use it for the timing of get tf pose
+  - node: `emcl2`
+  - type: geometry_msgs/msg/PoseWithCovarianceStamped
+
 - `/path_and_feedback` (action):
   - description: 経路データと経路上の特定の点のインデックスを渡し、特定の点を通過したというフィードバックをもらう。ゴールしたら結果が返ってくる。
   - type: robot_master/msg/PathAndFeedback
@@ -21,7 +31,26 @@
   - type: geometry_msgs/msg/Twist
 
 ## parameters
-- ``:
+<!-- 表で示す -->
+
+| name | type | default | description |
+| ---- | ---- | ------- | ----------- |
+| `speed` | float | 1.0 | ロボットの速さ [m/s] |
+| `lookahead_distance` | float | 0.5 | 先行点までの距離 [m] |
+| `path_p_gain` | float | 0.5 | 経路法線方向のP制御ゲイン |
+| `angle_p_gain` | float | 0.1 | 角度Pゲイン |
+| `angle_i_gain` | float | 0.01 | 角度Iゲイン |
+| `distance_threshold` | float | 0.2 | 距離のしきい値 [m] |
+
+## dependency
+- `rclpy`
+- `numpy`
+- `geometry_msgs`
+- `tf2_ros`
+- `action_msgs`
+- `pure_pursuit`
+- `robot_master`
+
 
 ## algorithm
 
@@ -32,41 +61,51 @@ import numpy as np
 from numpy.typing import NDArray
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import PoseStamped, Twist
+from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, Twist
 from pure_pursuit.msg import Path2DWithAngles
 
-class 経路追従クラス:
-    def 初期化:
-        トピック，TF，アクションの初期化
-        パラメータの初期化
-            ロボットの速さ, 1.0 # [m/s]
-            先行点までの距離, 0.5 #[m]
-            経路法線方向のP制御ゲイン: 0.5
-            角度Pゲイン, 0.1
-            角度Iゲイン, 0.01
-            距離のしきい値, 0.2 # [m]
-        メンバ変数の初期化
-            # パラメータ
-            ロボットの速さ: float # [m/s]
-            先行点までの距離: float # [m]
-            経路法線方向のP制御ゲイン: float
-            角度Pゲイン: float
-            角度Iゲイン: float
-            距離のしきい値: float # [m]
-            # 動的変数
-            経路データ: NDArray[np.float32] # np.array([[x, y, theta], [x, y, theta]])の形
-            特定の点のインデックス: NDArray[np.int8] # np.array([1, 2, 3])の形
-            接ベクトル: NDArray[np.float32] # np.array([[0.0, 0.0], [0.0, 0.0]])の形
-            法線ベクトル: NDArray[np.float32] # np.array([[0.0, 0.0], [0.0, 0.0]])の形
-            自己位置: NDArray[np.float32] # np.array([x, y, theta])の形
+class PurePursuitNode(Node):
+    def __init__ () -> None:
+        # トピック，TF，アクションの初期化
+        self.odom_sub = self.create_subscription(PoseStamped, '/odometry_pose', self.odom_callback, 10)
+        self.mcl_sub = self.create_subscription(PoseWithCovarianceStamped, '/mcl_pose', self.mcl_callback, 10)
+        self.path_and_feedback_action
+        self.vel_pub = self.create_publisher(Twist, '/robot_vel', 10)
+        # パラメータの初期化
+        ロボットの速さ, 1.0 # [m/s]
+        先行点までの距離, 0.5 #[m]
+        経路法線方向のP制御ゲイン: 0.5
+        角度Pゲイン, 0.1
+        角度Iゲイン, 0.01
+        距離のしきい値, 0.2 # [m]
+        # メンバ変数の初期化
+        # パラメータ
+        ロボットの速さ: float # [m/s]
+        先行点までの距離: float # [m]
+        経路法線方向のP制御ゲイン: float
+        角度Pゲイン: float
+        角度Iゲイン: float
+        距離のしきい値: float # [m]
+        # 動的変数
+        経路データ: NDArray[np.float32] # np.array([[x, y, theta], [x, y, theta]])の形
+        特定の点のインデックス: NDArray[np.int8] # np.array([1, 2, 3])の形
+        接ベクトル: NDArray[np.float32] # np.array([[0.0, 0.0], [0.0, 0.0]])の形
+        法線ベクトル: NDArray[np.float32] # np.array([[0.0, 0.0], [0.0, 0.0]])の形
+        自己位置: NDArray[np.float32] # np.array([x, y, theta])の形
 
-    def アクションコールバック:
+    def アクションコールバック () -> None:
         経路データの受け取りと格納
         特定の点のインデックスの受け取りと格納
         接ベクトルの計算と格納(経路データ)
-        法線ベクトルの計算と格納(経路データ)
+        法線ベクトルの計算と格納(接ベクトル)
 
-    def 自己位置TFコールバック:
+    def odometry_callback () -> None:
+        自己位置TFコールバック()
+
+    def mcl_callback () -> None:
+        自己位置TFコールバック()
+
+    def 自己位置TFコールバック () -> None:
         自己位置の格納
         速度入力の決定(自己位置, 経路データ, 接ベクトル, 法線ベクトル)
         Twistに格納
@@ -76,25 +115,50 @@ class 経路追従クラス:
         elif 距離(自己位置, 経路の終点) < 距離のしきい値:
             完了処理を行う
 
-    def 速度入力の決定(自己位置, 経路データ, 接ベクトル, 法線ベクトル):
-        先行点の計算(自己位置, 経路データ, 先行点までの距離)
-        最も近い経路上の点の計算(自己位置, 経路データ)
-        pure pursuit速度入力の決定(自己位置, 先行点, 先行点までの距離, ロボットの速さ)
-        経路法線方向のP制御入力の決定(自己位置, 最も近い経路上の点)
-        角度PI制御入力の決定
+    def 速度入力の決定 (
+            自己位置: NDArray[np.float32], 
+            経路データ: NDArray[np.float32], 
+            接ベクトル: NDArray[np.float32],
+            法線ベクトル: NDArray[np.float32]
+        ) -> None:
+        先行点の計算 (自己位置, 経路データ, 先行点までの距離)
+        最も近い経路上の点の計算 (自己位置, 経路データ)
+        pure pursuit速度入力の計算 (自己位置, 先行点, 先行点までの距離, ロボットの速さ)
+        経路法線方向のP制御入力の計算 (自己位置, 最も近い経路上の点)
+        角度PI制御入力の計算 (自己位置, 最も近い経路上の点)
 
-    def 先行点の計算:
+    def 先行点の計算 (
+            自己位置: NDArray[np.float32], 
+            経路データ: NDArray[np.float32], 
+            先行点までの距離: float
+        ) -> NDArray[np.float32]:
 
-    def 最も近い経路上の点の計算:
+    def 最も近い経路上の点の計算 (自己位置: NDArray[np.float32], 経路データ: NDArray[np.float32]) -> int:
 
-    def pure pursuit速度入力の決定:
+    def pure_pursuit速度入力の計算 (
+            自己位置: NDArray[np.float32], 
+            先行点: NDArray[np.float32], 
+            先行点までの距離: float, 
+            ロボットの速さ: float
+        ) -> NDArray[np.float32]:
 
-    def 経路法線方向のP制御入力の決定:
+    def 経路法線方向のP制御入力の計算 (自己位置: NDArray[np.float32], 最も近い経路上の点: int) -> NDArray[np.float32]:
 
-    def 角度PI制御入力の決定:
+    def 角度PI制御入力の計算 (自己位置: NDArray[np.float32], 最も近い経路上の点: int) -> NDArray[np.float32]:
 
-    def 接ベクトルの計算:
+    def 接ベクトルの計算 (経路データ: NDArray[np.float32]) -> NDArray[np.float32]:
+        # 接ベクトルの計算
 
-    def 法線ベクトルの計算:
+    def 法線ベクトルの計算 (接ベクトル: NDArray[np.float32]) -> NDArray[np.float32]:
+        # 法線ベクトルの計算
+
+def main () -> None:
+    rclpy.init()
+    node = PurePursuitNode()
+    rclpy.spin(node)
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
 
 ```
