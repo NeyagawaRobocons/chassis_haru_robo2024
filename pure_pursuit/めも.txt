@@ -1,0 +1,6 @@
+path_points[i - 1], path_points[i], path_points[i + 1]に対して，
+vec_1 = (path_points[i] - path_points[i - 1]) / 大きさ(path_points[i] - path_points[i - 1])
+vec_2 = (path_points[i + 1] - path_points[i]) / 大きさ(path_points[i + 1] - path_points[i])
+として，
+path_points[i] + (vec_2 - vec_1) / 大きさ(vec_2 - vec_1) * 半径
+の位置を中心に，vec_1の角度から, -vec_2の角度まで円弧を描画するアプローチを考えました．このとき，直線はpath_points[i - 1]から，path_points[i - 1]vec_1 * (大きさ(path_points[i] - path_points[i - 1]) - 半径)まで描画します．
