@@ -14,6 +14,8 @@ find_package(std_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(mecha_control REQUIRED)
+find_package(robot_master REQUIRED)
+# find_package(pure_pursuit REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -22,6 +24,8 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/PointAndAngle.msg"
   "msg/Path2DWithAngles.msg"
+  "action/PathAndFeedback.action"
+  # DEPENDENCIES pure_pursuit
 )
 ament_export_dependencies(rosidl_default_runtime)
 

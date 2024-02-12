@@ -1,0 +1,11 @@
+# パスとフィードバックのデータ
+
+# ゴール定義
+pure_pursuit/Path2DWithAngles path_with_angles
+int32[] feedback_indices
+---
+# 結果定義
+int32 final_index
+---
+# フィードバック定義
+int32 current_index

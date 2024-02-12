@@ -1,205 +1,142 @@
 #!/usr/bin/env python3
 import numpy as np
+from numpy.typing import NDArray
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import PoseStamped, Twist
-from std_msgs.msg import Bool
-from nav_msgs.msg import Path
+from rclpy.action import ActionServer, ServerGoalHandle
+from tf2_ros import Buffer, TransformListener
+from tf2_ros.transform import TransformStamped
+from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, Twist
 from pure_pursuit.msg import Path2DWithAngles
+from pure_pursuit.action import PathAndFeedback
 
 class PurePursuitNode(Node):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__('pure_pursuit_node')
-        self.subscription = self.create_subscription(
-            PoseStamped, '/robot_pose', self.pose_callback, 10)
-        self.publisher = self.create_publisher(Twist, '/robot_vel', 10)
-        # Pathメッセージをパブリッシュするためのパブリッシャーの初期化
-        self.path_publisher = self.create_publisher(Path, '/robot_path_for_view', 10)
-
-        # 動作制御のサブスクリプション
-        self.subscription_control = self.create_subscription(
-            Bool, '/robot_control', self.control_callback, 10)
-        self.is_active = False  # 初期状態では停止
-
-        self.path_subscriber = self.create_subscription(
-            Path2DWithAngles, '/robot_path', self.path_callback, 10)
-
+        # トピック，TF，アクションの初期化
+        self.odom_sub = self.create_subscription(PoseStamped, '/odometry_pose', self.odom_callback, 10)
+        self.mcl_sub = self.create_subscription(PoseWithCovarianceStamped, '/mcl_pose', self.mcl_callback, 10)
+        self.action_server = ActionServer(
+            self,
+            PathAndFeedback,
+            'path_and_feedback',
+            self.execute_callback
+        )
+        self.vel_pub = self.create_publisher(Twist, '/robot_vel', 10)
         # パラメータの宣言
-        # この行を変更
-        self.declare_parameter('speed', 2.0)
-        self.declare_parameter('lookahead_distance', 0.3)
-
+        self.declare_parameters(
+            namespace='',
+            parameters=[
+                ('speed', 1.0), # [m/s]
+                ('lookahead_distance', 0.5),
+                ('path_p_gain', 0.5),
+                ('angle_p_gain', 0.1),
+                ('angle_i_gain', 0.01),
+                ('distance_threshold', 0.2),
+            ]
+        )
         # パラメータの取得
-        # self.on_way_points: list[float] = [[0.0, 0.0], [0.0, 1.0], [1.2, 1.0], [1.2, 2.0]]
-        self.speed: float = self.get_parameter('speed').value
-        self.lookahead_distance: float = self.get_parameter('lookahead_distance').value
+        self.speed = self.get_parameter('speed').value
+        self.lookahead_distance = self.get_parameter('lookahead_distance').value
+        self.path_p_gain = self.get_parameter('path_p_gain').value
+        self.angle_p_gain = self.get_parameter('angle_p_gain').value
+        self.angle_i_gain = self.get_parameter('angle_i_gain').value
+        self.distance_threshold = self.get_parameter('distance_threshold').value
+        # 動的変数
+        self.path_data: NDArray[np.float32] # np.array([[x, y, theta], [x, y, theta]])の形
+        self.indices: NDArray[np.int8] # np.array([1, 2, 3])の形
+        self.tangents: NDArray[np.float32] # np.array([[0.0, 0.0], [0.0, 0.0]])の形
+        self.normals: NDArray[np.float32] # np.array([[0.0, 0.0], [0.0, 0.0]])の形
+        self.robot_pose: NDArray[np.float32] # np.array([x, y, theta])の形
 
-        # メンバ変数
-        self.path_points: np.ndarray = np.array([])
-        self.tangents: np.ndarray = np.array([])
-        self.current_path_index: int = -1 # 現在の経路のインデックス
+    def execute_callback (self, goal_handle: ServerGoalHandle[PathAndFeedback.Goal]) -> None:
+        # 経路データの受け取りと格納
+        self.path_data = np.array(goal_handle.request.path)
+        # 特定の点のインデックスの受け取りと格納
+        self.indices = np.array(goal_handle.request.index)
+        self.tangents = self.接ベクトルの計算 (self.path_data) # 接ベクトルの計算と格納
+        self.normals = self.法線ベクトルの計算 (self.tangents) # 法線ベクトルの計算と格納
 
-        # 経路データと接ベクトルの生成
-        # self.path_points, self.tangents = self.generate_path_data(self.on_way_points)
-        # self.publish_path(self.path_points)
+    def odometry_callback (self) -> None:
+        self.get_logger().debug('odometry_callback')
+        self.pose_tf_callback()
 
-        self.get_logger().info("pure_pursuit_node has been started")
+    def mcl_callback (self) -> None:
+        self.get_logger().debug('mcl_callback')
+        self.pose_tf_callback()
 
-    def control_callback(self, msg: Bool):
-        # 動作制御のメッセージに基づいて状態を更新
-        # self.get_logger().info("control_callback")
-        self.is_active = msg.data
+    def pose_tf_callback (self) -> None:
+        # ToDo: 位置の格納
+        lookahead_point: NDArray[np.float32] = self.先行点の計算 (self.robot_pose, self.path_data, self.lookahead_distance)
+        closest_point: NDArray[np.float32] = None
+        closest_point, closest_index = self.最も近い経路上の点の計算 (self.robot_pose, self.path_data)
+        vel_msg = self.速度入力の計算 (
+            self.robot_pose, lookahead_point, closest_point, self.lookahead_distance, self.speed)
+        # 速度入力パブリッシュ
+        self.vel_pub.publish(vel_msg)
+        if closest_index in self.indices:
+            # フィードバックにインデックスを返す
+            pass
+        elif self.距離(self.robot_pose, 経路の終点) < self.distance_threshold:
+            # 完了処理を行う
+            pass
 
-    def path_callback(self, msg: Path2DWithAngles):
-        if msg.path_with_angles == []:
-            self.get_logger().warn("path_callback: path_with_angles is empty")
-            return
+    def 速度入力の計算 (self,
+            robot_pose: NDArray[np.float32], 
+            lookahead_point: NDArray[np.float32],
+            closest_point: NDArray[np.float32],
+            lookahead_distance: float,
+            speed: float
+        ) -> Twist:
+        pure_pursuit_vel: NDArray[np.float32] = self.pure_pursuit速度入力の計算 (robot_pose, lookahead_point, lookahead_distance, speed)
+        p_control_vel: NDArray[np.float32] = self.経路法線方向のP制御入力の計算 (robot_pose, closest_point)
+        omega: float = self.角度PI制御入力の計算 (robot_pose, closest_point)
+        vel_msg = Twist()
+        vel_msg.linear.x = pure_pursuit_vel[0] + p_control_vel[0]
+        vel_msg.linear.x = pure_pursuit_vel[1] + p_control_vel[1]
+        vel_msg.angular.z = omega
+        return vel_msg
 
-        self.path_points = np.array([[point.x, point.y] for point in msg.path_with_angles])
-        self.path_angles = np.array([point.theta for point in msg.path_with_angles])
+    def 先行点の計算 (self,
+            robot_pose: NDArray[np.float32], 
+            path_data: NDArray[np.float32], 
+            先行点までの距離: float
+        ) -> NDArray[np.float32]:
+        pass
 
+    def 最も近い経路上の点の計算 (robot_pose: NDArray[np.float32], path_data: NDArray[np.float32]) -> int:
+        pass
+
+    def pure_pursuit速度入力の計算 (
+            robot_pose: NDArray[np.float32], 
+            先行点: NDArray[np.float32], 
+            先行点までの距離: float, 
+            ロボットの速さ: float
+        ) -> NDArray[np.float32]:
+        pass
+
+    def 経路法線方向のP制御入力の計算 (robot_pose: NDArray[np.float32], 最も近い経路上の点: int) -> NDArray[np.float32]:
+        pass
+
+    def 角度PI制御入力の計算 (robot_pose: NDArray[np.float32], 最も近い経路上の点: int) -> NDArray[np.float32]:
+        pass
+
+    def 接ベクトルの計算 (path_data: NDArray[np.float32]) -> NDArray[np.float32]:
         # 接ベクトルの計算
-        tangents = [
-            (self.path_points[i + 1] - self.path_points[i]) / np.linalg.norm(self.path_points[i + 1] - self.path_points[i])
-            if np.linalg.norm(self.path_points[i + 1] - self.path_points[i]) != 0 else np.zeros(2)
-            for i in range(len(self.path_points) - 1)
-        ]
+        pass
 
-        # 最後の点のために最後の接ベクトルを追加
-        if len(self.path_points) > 1:
-            tangents.append(tangents[-1])
+    def 法線ベクトルの計算 (tangents: NDArray[np.float32]) -> NDArray[np.float32]:
+        # 法線ベクトルの計算
+        pass
 
-        self.tangents = np.array(tangents)
-        
-        #　タンジェントの配列長を出力
-        self.get_logger().info("path_callback: len(tangents) = %s" % len(self.tangents))
+    def 距離 (p1: NDArray[np.float32], p2: NDArray[np.float32]) -> float:
+        # 2点間の距離を計算
+        return np.linalg.norm(p1 - p2)
 
-    def pose_callback(self, msg: PoseStamped):
-        if self.is_active:
-            # 自己位置の取得
-            current_point = np.array([msg.pose.position.x, msg.pose.position.y])
-            theta = self.get_yaw(msg)
-
-            # 先行点の計算
-            self.lookahead_point = self.calculate_lookahead_point(self.path_points, self.tangents, current_point)
-
-            # 速度ベクトルの計算
-            velocity_vector = self.calculate_velocity_vector(self.lookahead_point, current_point)
-
-            # velocity_vectorがNoneでないことを確認してからpublish
-            if velocity_vector is not None:
-                # 速度ベクトルのpublish
-                twist_msg = Twist()
-                # 速度ベクトルを回転させて格納
-                twist_msg.linear.x = velocity_vector[0] * np.cos(theta) + velocity_vector[1] * np.sin(theta)
-                twist_msg.linear.y = -velocity_vector[0] * np.sin(theta) + velocity_vector[1] * np.cos(theta)
-                self.publisher.publish(twist_msg)
-            else:
-                # 速度ベクトルがNoneの場合は、ログに警告を出力し、何もしない
-                self.get_logger().warn("Velocity vector is None, cannot publish Twist message.")
-                # publish Twist message with zero velocity
-                twist_msg = Twist()
-                twist_msg.linear.x = 0.0
-                twist_msg.linear.y = 0.0
-                self.publisher.publish(twist_msg)
-        else:
-            self.get_logger().info("waiting for command")
-            # publish Twist message with zero velocity
-            twist_msg = Twist()
-            twist_msg.linear.x = 0.0
-            twist_msg.linear.y = 0.0
-            self.publisher.publish(twist_msg)
-        self.publish_path(self.path_points)
-
-    def publish_path(self, path_points):
-        # 経路データをPathメッセージに変換
-        path_msg = Path()
-        path_msg.header.stamp = self.get_clock().now().to_msg()
-        path_msg.header.frame_id = 'map'  # 経路データがこのフレーム内にあると想定
-        
-        for point in path_points:
-            pose = PoseStamped()
-            pose.header = path_msg.header
-            pose.pose.position.x = point[0]
-            pose.pose.position.y = point[1]
-            pose.pose.orientation.w = 1.0  # クォータニオンのw値は単位クォータニオン
-            path_msg.poses.append(pose)
-
-        self.path_publisher.publish(path_msg)
-
-    def calculate_lookahead_point(
-            self, 
-            path_points: np.ndarray, 
-            tangents: np.ndarray, 
-            current_point: np.ndarray) -> np.ndarray:
-        """
-        経路上の現在地における前方参照点を計算するメソッド
-        """
-        closest_point = None
-        closest_tangent = None
-        min_distance = float('inf')
-
-        for i in range(self.current_path_index, len(path_points)):
-            path_point = path_points[i]
-            tangent = tangents[i]
-            to_path_vector = path_point - current_point
-            distance_to_path = np.linalg.norm(to_path_vector)
-
-            if distance_to_path < self.lookahead_distance:
-                continue
-
-            # ロボットの現在位置からの距離がルックアヘッド距離より短い場合、スキップ
-            dot_product = np.dot(to_path_vector, tangent)
-
-            # 内積が正で、かつ最短距離でかつ一つ前の先行点よりもインデックスが大きい点であれば更新
-            if dot_product > 0 and distance_to_path < min_distance:
-                min_distance = distance_to_path
-                closest_point = path_point
-                closest_tangent = tangent
-                self.current_path_index = i
-
-        # まだ先行点が見つかっていない場合、最も近い点を使用
-        if closest_point is None:
-            return None
-
-        # 接ベクトルとルックアヘッド距離を用いて先行点を補間
-        t = (self.lookahead_distance - min_distance) / np.linalg.norm(closest_tangent)
-        lookahead_point = closest_point + t * closest_tangent
-
-        return lookahead_point
-
-    def calculate_velocity_vector(self, lookahead_point: np.ndarray, current_point: np.ndarray) -> np.ndarray:
-        # 速度ベクトルの計算
-        if lookahead_point is None:
-            return None  # 先行点が見つからない場合
-
-        # 速度ベクトルを計算する（先行点への単位ベクトルに速度を乗じる）
-        direction_vector = lookahead_point - current_point
-        unit_direction_vector = direction_vector / np.linalg.norm(direction_vector)
-        velocity_vector = unit_direction_vector * self.speed
-        return velocity_vector
-    
-    def get_yaw(self, pose_stamped):
-        # 回転（クォータニオン）からYaw角を取得する関数
-        orientation = pose_stamped.pose.orientation
-        # 四元数の値
-        x = orientation.x
-        y = orientation.y
-        z = orientation.z
-        w = orientation.w
-
-        # 四元数からヨー角を計算
-        siny_cosp = 2 * (w * z + x * y)
-        cosy_cosp = 1 - 2 * (y * y + z * z)
-        yaw = np.arctan2(siny_cosp, cosy_cosp)
-
-        return yaw
-
-def main(args=None):
-    rclpy.init(args=args)
-    velocity_calculator = PurePursuitNode()
-    rclpy.spin(velocity_calculator)
-    velocity_calculator.destroy_node()
+def main () -> None:
+    rclpy.init()
+    node = PurePursuitNode()
+    rclpy.spin(node)
     rclpy.shutdown()
 
 if __name__ == '__main__':
