@@ -21,7 +21,7 @@ deltaPose2D Odometry::calc_vel(double _tire_angles[3]) {
     // ロボットの向きに合わせて速度ベクトルを回転
     delta_pose.x = delta_x * cos(pose.theta) - delta_y * sin(pose.theta);
     delta_pose.y = delta_x * sin(pose.theta) + delta_y * cos(pose.theta);
-    delta_pose.theta = radius * (delta_angle[0] + delta_angle[1] + delta_angle[2]) / 3.0 / length;
+    delta_pose.theta = radius * (delta_angle[0] + delta_angle[2]) / 3.0 / length;
     update_angles(_tire_angles); // 前回カウントの更新
     return delta_pose;
 }
