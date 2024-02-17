@@ -17,8 +17,15 @@ OdomPubSub::OdomPubSub(
   const std::string& name_space, 
   const rclcpp::NodeOptions& options
 ): Node("odometry_node", name_space, options), count_(0) {
+  // declare parameters: radius, length
+  this->declare_parameter("radius", 0.02504);
+  this->declare_parameter("length", 0.1689);
+  this->declare_parameter("output_name", "odometry_pose");
+  this->get_parameter("radius", radius);
+  this->get_parameter("length", length);
+  auto topic_name = this->get_parameter("output_name").as_string();
   publisher_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(
-    "odometry_pose", // トピック名
+    topic_name,  // トピック名
     rclcpp::QoS(10)
   );
   _subscription = this->create_subscription<nucleo_agent::msg::OdometerData>(
@@ -31,11 +38,6 @@ OdomPubSub::OdomPubSub(
     rclcpp::QoS(10),
     std::bind(&OdomPubSub::_initial_callback, this, std::placeholders::_1)
   );
-  // declare parameters: radius, length
-  this->declare_parameter("radius", 0.02504);
-  this->declare_parameter("length", 0.1689);
-  this->get_parameter("radius", radius);
-  this->get_parameter("length", length);
 
   odom = Odometry(radius, length, 0.0, 0.0, 0.0);
 
