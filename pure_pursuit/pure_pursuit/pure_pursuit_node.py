@@ -10,6 +10,7 @@ from rclpy.executors import MultiThreadedExecutor
 from geometry_msgs.msg import PoseStamped, Twist
 from pure_pursuit.msg import Path2DWithAngles
 from pure_pursuit.action import PathAndFeedback
+from PI_controller_class import PIController
 
 class PurePursuitNode(Node):
     def __init__(self) -> None:
@@ -43,17 +44,22 @@ class PurePursuitNode(Node):
         self.angle_p_gain = self.get_parameter('angle_p_gain').value
         self.angle_i_gain = self.get_parameter('angle_i_gain').value
         self.distance_threshold = self.get_parameter('distance_threshold').value
-        # 動的変数
+        self.angle_controller = PIController(self.angle_p_gain, self.angle_i_gain, max_input=1.0)
+        # 準静的な変数の初期化
         self.path_data: NDArray[np.float64] = None # np.array([[x, y, theta], [x, y, theta]])の形
         self.indices: NDArray[np.int8] = np.array([]) # np.array([1, 2, 3])の形
         self.tangents: NDArray[np.float64] = None # np.array([[0.0, 0.0], [0.0, 0.0]])の形
+        self.angles = None # np.array([0.0, 0.0, 0.0])の形
         self.max_angle: float = 0.0
+        # 動的な変数の初期化
         self.robot_pose: NDArray[np.float64] = np.array([0.0, 0.0, 0.0]) # np.array([x, y, theta])の形
         self.pure_pursuit_vel: NDArray[np.float64] = np.array([0.0, 0.0]) # np.array([v_x, v_y])の形
         self.current_path_index: int = -1
         self.closest_index: int = -1
         self.current_speed = self.speed
         self.current_lookahead_distance = self.lookahead_distance
+        self.dt = 0.1
+        # action serverのための変数の初期化
         self.goal_handle = None # GoalHandleの初期化
         self.result_msg = None # Resultの初期化
         self.start_pure_pursuit = False # pure pursuitの開始フラグの初期化
@@ -113,7 +119,8 @@ class PurePursuitNode(Node):
         closest_point: NDArray[np.float64] = None
         closest_point, self.closest_index = self.find_closest_point (self.robot_pose, self.path_data, self.robot_pose, self.closest_index)
         # 速度入力の計算
-        vel_msg = self.速度入力の計算 (self.robot_pose, lookahead_point, closest_point, self.lookahead_distance, self.speed)
+        vel: NDArray[np.float64] = self.compute_velocity (self.robot_pose, lookahead_point, closest_point, self.lookahead_distance, self.speed)
+        vel_msg: Twist = self.vel_to_Twist (vel)
         self.vel_pub.publish(vel_msg) # 速度入力パブリッシュ
         self.get_logger().debug(f"v_x: {vel_msg.linear.x}, v_y: {vel_msg.linear.y}, omega: {vel_msg.angular.z}")
         self.current_speed, self.current_lookahead_distance = self.change_speed_lookahead_distance (
@@ -133,22 +140,6 @@ class PurePursuitNode(Node):
             self.result_msg.final_index = self.closest_index
             self.completed = True
 
-    def 速度入力の計算 (self,
-            robot_pose: NDArray[np.float64], 
-            lookahead_point: NDArray[np.float64],
-            closest_point: NDArray[np.float64],
-            lookahead_distance: float,
-            speed: float
-        ) -> Twist:
-        self.pure_pursuit_vel = self.calc_pure_pursuit_vel (robot_pose, lookahead_point, lookahead_distance, speed, self.pure_pursuit_vel)
-        p_control_vel: NDArray[np.float64] = self.compute_path_P_input (robot_pose[:2], closest_point, self.closest_index, self.angles, np.pi, self.angle_p_gain)
-        omega: float = self.角度PI制御入力の計算 (robot_pose, closest_point)
-        vel_msg = Twist()
-        vel_msg.linear.x = self.pure_pursuit_vel[0] + p_control_vel[0]
-        vel_msg.linear.x = self.pure_pursuit_vel[1] + p_control_vel[1]
-        vel_msg.angular.z = omega
-        return vel_msg
-
     def find_lookahead_point (self,
             robot_pose: NDArray[np.float64], 
             path_data: NDArray[np.float64], 
@@ -161,8 +152,8 @@ class PurePursuitNode(Node):
         index: int = previous_index
 
         for i in range(previous_index + 1, len(path_data)):
-            point = path_data[i][:2]
-            if abs(self.distance(robot_pose[:2], point) - lookahead_distance) < distance_threshold:
+            point = path_data[i]
+            if abs(self.distance(robot_pose[:2], point[:2]) - lookahead_distance) < distance_threshold:
                 lookahead_point = point
                 index = i
                 break
@@ -180,14 +171,37 @@ class PurePursuitNode(Node):
         min_distance: float = float('inf')
 
         for i in range(previous_index + 1, len(path_data)):
-            point = path_data[i][:2]
-            d = self.distance(robot_pose[:2], point)
+            point = path_data[i]
+            d = self.distance(robot_pose[:2], point[:2])
             if d < min_distance:
                 min_distance = d
                 closest_point = point
                 closest_index = i
 
         return closest_point, closest_index
+
+    def compute_velocity (self,
+            robot_pose: NDArray[np.float64], 
+            lookahead_point: NDArray[np.float64],
+            closest_point: NDArray[np.float64],
+            speed: float
+        ) -> NDArray[np.float64]:
+        self.pure_pursuit_vel = self.calc_pure_pursuit_vel (
+            robot_pose, lookahead_point, speed)
+        p_control_vel: NDArray[np.float64] = self.compute_path_P_input (
+            robot_pose, closest_point, self.closest_index, self.angles, self.max_angle, self.path_p_gain)
+        omega: float = self.compute_angle_PI (robot_pose, closest_point, self.dt)
+        vel: NDArray[np.float64] = np.array([0.0, 0.0, 0.0])
+        vel[:2] = self.pure_pursuit_vel + p_control_vel
+        vel[2] = omega
+        return vel
+    
+    def vel_to_Twist (self, vel: NDArray[np.float64]) -> Twist:
+        vel_msg = Twist()
+        vel_msg.linear.x = vel[0]
+        vel_msg.linear.y = vel[1]
+        vel_msg.angular.z = vel[2] # omega
+        return vel_msg
 
     def calc_pure_pursuit_vel (self,
             robot_pose: NDArray[np.float64], 
@@ -196,7 +210,7 @@ class PurePursuitNode(Node):
         ) -> NDArray[np.float64]:
         # 速度入力の計算
         vel: NDArray[np.float64] = np.array([0.0, 0.0])
-        direction: NDArray[np.float64] = lookahead_point - robot_pose[:2]
+        direction: NDArray[np.float64] = lookahead_point[:2] - robot_pose[:2]
         if np.linalg.norm(direction) > 0.0:
             direction /= np.linalg.norm(direction) # 方向ベクトルの正規化
         vel = direction * speed
@@ -211,11 +225,11 @@ class PurePursuitNode(Node):
             path_p_gain: float
         ) -> NDArray[np.float64]:
         # p_input_vel = path_p_gain * (closest_point - robot_position)
-        p_input_vel = path_p_gain * (1.0 + (1.0 / 10.0 - 1.0) * angles[closest_index] / max_angle) * (closest_point - robot_position)
+        p_input_vel = path_p_gain * (1.0 + (1.0 / 10.0 - 1.0) * angles[closest_index] / max_angle) * (closest_point - robot_position)[:2]
         return p_input_vel
 
-    def 角度PI制御入力の計算 (self, robot_pose: NDArray[np.float64], closest_point: NDArray[np.float64]) -> float:
-        return 0.0
+    def compute_angle_PI (self, robot_pose: NDArray[np.float64], closest_point: NDArray[np.float64], dt: float = 0.1) -> float:
+        return self.angle_controller.update(robot_pose[2], closest_point[2], )
 
     def compute_tangents (self, path_data: NDArray[np.float64]) -> NDArray[np.float64]:
         # 接ベクトルの計算
@@ -256,10 +270,10 @@ class PurePursuitNode(Node):
         path_y = path_data[:, 1]
         dist = np.sqrt((path_x[-1] - closest_point[0])**2 + (path_y[-1] - closest_point[1])**2)
         # if 最終点と現在の先行点の距離がしきい値以下なら:
-        if dist < lookahead_distance * 2.0:
+        if dist < lookahead_distance:
             # change lookahead_distance and speed as propotion to distance between lookahead_point and final path point
-            # current_LA_dist = lookahead_distance * (1.0 - np.cos(np.pi * dist / lookahead_distance)) / 2.0
-            current_LA_dist = lookahead_distance * (dist / 2.0 / lookahead_distance)
+            current_LA_dist = lookahead_distance * (1.0 - np.cos(np.pi * dist / lookahead_distance)) / 2.0
+            # current_LA_dist = lookahead_distance * (dist / 2.0 / lookahead_distance)
             current_speed = speed * dist / lookahead_distance / 2.0
             # current_speed = speed * (1.0 - np.cos(np.pi * dist / lookahead_distance / 2.0)) / 2.0
         else : # 曲率に応じて変化させる
