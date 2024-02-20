@@ -16,7 +16,7 @@ public:
     // declare parameters: tire radius, tire distance (= length)
     this->declare_parameter("radius", 0.0508);
 
-    this->declare_parameter("length", 0.160); // ToDo: check this value
+    this->declare_parameter("length", 0.400); // ToDo: check this value
 
     // declare parameters: number of wheels (3, 4)
     this->declare_parameter("num_wheels", 4);
@@ -25,8 +25,13 @@ public:
     std::string output_topic = this->get_parameter("output_topic").as_string();
     this->radius = this->get_parameter("radius").as_double();
     this->length = this->get_parameter("length").as_double();
+        // get parameters: num_wheels
+    this->num_wheels = this->get_parameter("num_wheels").as_int();
     RCLCPP_INFO(this->get_logger(), "input_topic: %s", input_topic.c_str());
     RCLCPP_INFO(this->get_logger(), "output_topic: %s", output_topic.c_str());
+    RCLCPP_INFO(this->get_logger(), "radius: %f", radius);
+    RCLCPP_INFO(this->get_logger(), "length: %f", length);
+    RCLCPP_INFO(this->get_logger(), "num_wheels: %d", num_wheels);
 
     // robot_vel サブスクライバーの初期化
     robot_vel_subscriber_ = this->create_subscription<geometry_msgs::msg::Twist>(
@@ -53,8 +58,6 @@ private:
   std_msgs::msg::Float64MultiArray calc_wheel_vel(double radius, double length, double v_x, double v_y, double omega)
   {
     std_msgs::msg::Float64MultiArray input_vel;
-    // get parameters: num_wheels
-    const int num_wheels = this->get_parameter("num_wheels").as_int();
     if (num_wheels == 4) { // default
       // ToDo: make this calculation correct
       input_vel.data.resize(4);
@@ -81,6 +84,7 @@ private:
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr input_vel_publisher_;
   double radius;
   double length;
+  int num_wheels;
 };
 
 int main(int argc, char *argv[])

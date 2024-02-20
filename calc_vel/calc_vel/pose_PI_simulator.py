@@ -9,14 +9,25 @@ from tf_transformations import euler_from_quaternion, quaternion_from_euler
 class OdometryCalculator(Node):
     def __init__(self):
         super().__init__('pose_PI_simulator')
-
+        # パラメータの宣言
+        self.declare_parameters(
+            namespace='',
+            parameters=[
+                ('radius', 0.0508), # タイヤ半径
+                ('length', 0.400), # タイヤの設置半径
+                ('output_name', '/odometry_pose'), # オドメトリー情報をパブリッシュするトピック名
+                ('frame_id', 'odom'), # オドメトリー情報のフレームID
+            ]
+        )
+        self.radius = self.get_parameter('radius').value
+        self.length = self.get_parameter('length').value
+        self.output_name = self.get_parameter('output_name').value
+        self.frame_id = self.get_parameter('frame_id').value
         # サブスクライバーの設定
         self.subscription = self.create_subscription(Float64MultiArray, '/input_vel', self.velocity_callback, 10)
         self.initial_subscription = self.create_subscription(PoseWithCovarianceStamped, '/initialpose', self.initial_callback, 10)
-
         # パブリッシャーの設定
-        self.publisher_ = self.create_publisher(PoseStamped, '/odometry_pose', 10)
-
+        self.publisher_ = self.create_publisher(PoseStamped, self.output_name, 10)
         # 現在の位置と姿勢の初期化
         self.current_pose = PoseStamped()
         self.current_pose.pose.position.x = 0.0
@@ -25,20 +36,19 @@ class OdometryCalculator(Node):
         # 四元数の初期化
         q = quaternion_from_euler(0, 0, 0)
         self.current_pose.pose.orientation = Quaternion(x=q[0], y=q[1], z=q[2], w=q[3])
-
+        self.current_pose.header.frame_id = self.frame_id
         # 前回のコールバック時間
         self.last_time = self.get_clock().now()
+        # 定期的にオドメトリー情報をpublish
+        self.timer = self.create_timer(0.05, self.timer_callback)
+        self.get_logger().info('pose_PI_simulator has been started')
+        self.get_logger().info('radius: %f' % self.radius)
+        self.get_logger().info('length: %f' % self.length)
+        self.get_logger().info('output_name: %s' % self.output_name)
+        self.get_logger().info('frame_id: %s' % self.frame_id)
 
-        # パラメータの宣言
-        self.declare_parameters(
-            namespace='',
-            parameters=[
-                ('radius', 0.050), # タイヤ半径
-                ('length', 0.400), # タイヤの設置半径
-            ]
-        )
-        self.radius = self.get_parameter('radius').value
-        self.length = self.get_parameter('length').value
+    def timer_callback(self):
+        self.publisher_.publish(self.current_pose)
 
     def velocity_callback(self, msg):
         current_time = self.get_clock().now()
