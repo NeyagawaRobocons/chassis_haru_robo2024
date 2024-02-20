@@ -21,9 +21,11 @@ OdomPubSub::OdomPubSub(
   this->declare_parameter("radius", 0.02504);
   this->declare_parameter("length", 0.1689);
   this->declare_parameter("output_name", "odometry_pose");
+  this->declare_parameter("frame_id", "odom");
   this->get_parameter("radius", radius);
   this->get_parameter("length", length);
   auto topic_name = this->get_parameter("output_name").as_string();
+  auto frame_id = this->get_parameter("frame_id").as_string();
   publisher_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(
     topic_name,  // トピック名
     rclcpp::QoS(10)
@@ -42,6 +44,9 @@ OdomPubSub::OdomPubSub(
   odom = Odometry(radius, length, 0.0, 0.0, 0.0);
 
   RCLCPP_INFO(this->get_logger(), "odometry_node has been started");
+  RCLCPP_INFO(this->get_logger(), "radius: %f", radius);
+  RCLCPP_INFO(this->get_logger(), "length: %f", length);
+  RCLCPP_INFO(this->get_logger(), "output_name: %s", topic_name.c_str());
 }
 
 void OdomPubSub::_topic_callback(const nucleo_agent::msg::OdometerData::SharedPtr msg) {

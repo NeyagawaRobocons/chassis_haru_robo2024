@@ -18,6 +18,9 @@ class PoseSubscriber(Node):
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
         self.get_logger().info('complete initialize')
+        self.get_logger().info('topic_name: ' + self.get_parameter('topic_name').get_parameter_value().string_value)
+        self.get_logger().info('header_frame_id: ' + self.get_parameter('header_frame_id').get_parameter_value().string_value)
+        self.get_logger().info('child_frame_id: ' + self.get_parameter('child_frame_id').get_parameter_value().string_value)
 
     def handle_robot_pose(self, msg):
         transform = TransformStamped()
