@@ -7,7 +7,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionServer
 from rclpy.executors import MultiThreadedExecutor
-from geometry_msgs.msg import PoseStamped, Twist
+from geometry_msgs.msg import Quaternion, PoseStamped, Twist
 from pure_pursuit.msg import Path2DWithAngles
 from pure_pursuit.action import PathAndFeedback
 from PI_controller_class import PIController
@@ -21,20 +21,27 @@ class PurePursuitNode(Node):
             self,
             PathAndFeedback,
             'path_and_feedback',
-            self.execute_callback
-        )
+            self.execute_callback)
         self.vel_pub = self.create_publisher(Twist, '/robot_vel', 10)
-
+        self.lookahead_pub = self.create_publisher(
+            PoseStamped,
+            'lookahead_pose',
+            10)
+        self.closest_pub = self.create_publisher(
+            PoseStamped,
+            'closest_pose',
+            10)
         # パラメータの宣言
         self.declare_parameters(
             namespace='',
             parameters=[
                 ('speed', 1.0), # [m/s]
                 ('lookahead_distance', 0.5),
-                ('path_p_gain', 0.5),
-                ('angle_p_gain', 0.1),
-                ('angle_i_gain', 0.01),
+                ('path_p_gain', 0.05),
+                ('angle_p_gain', 0.0),
+                ('angle_i_gain', 0.00),
                 ('distance_threshold', 0.2),
+                ('initial_pose', [0.0, 0.0, 0.0])
             ]
         )
         # パラメータの取得
@@ -44,6 +51,7 @@ class PurePursuitNode(Node):
         self.angle_p_gain = self.get_parameter('angle_p_gain').value
         self.angle_i_gain = self.get_parameter('angle_i_gain').value
         self.distance_threshold = self.get_parameter('distance_threshold').value
+        self.initial_pose = self.get_parameter('initial_pose').value
         self.angle_controller = PIController(self.angle_p_gain, self.angle_i_gain, max_input=1.0)
         # 準静的な変数の初期化
         self.path_data: NDArray[np.float64] = None # np.array([[x, y, theta], [x, y, theta]])の形
@@ -52,10 +60,12 @@ class PurePursuitNode(Node):
         self.angles = None # np.array([0.0, 0.0, 0.0])の形
         self.max_angle: float = 0.0
         # 動的な変数の初期化
-        self.robot_pose: NDArray[np.float64] = np.array([0.0, 0.0, 0.0]) # np.array([x, y, theta])の形
+        self.robot_pose: NDArray[np.float64] = np.array(self.initial_pose) # np.array([x, y, theta])の形
         self.pure_pursuit_vel: NDArray[np.float64] = np.array([0.0, 0.0]) # np.array([v_x, v_y])の形
-        self.current_path_index: int = -1
-        self.closest_index: int = -1
+        self.lookahead_point: NDArray[np.float64] = np.array([0.0, 0.0, 0.0])
+        self.current_path_index: int = 0 # -1にすると最後の点が選ばれてしまうエラーがある
+        self.closest_point: NDArray[np.float64] = np.array([0.0, 0.0, 0.0])
+        self.closest_index: int = 0 # -1にすると最後の点が選ばれてしまうエラーがある
         self.current_speed = self.speed
         self.current_lookahead_distance = self.lookahead_distance
         self.dt = 0.1
@@ -70,10 +80,6 @@ class PurePursuitNode(Node):
 
     async def execute_callback (self, goal_handle) -> None:
         self.goal_event.clear()  # イベントフラグをリセット
-        self.completed = False # 完了フラグをリセット
-        self.result_msg = None # Resultをリセット
-        self.start_pure_pursuit = True # pure pursuitの開始フラグをセット
-        self.goal_handle = goal_handle
         # 経路データの受け取りと格納
         path_msgs = goal_handle.request.path.path
         # 特定の点のインデックスの受け取りと格納
@@ -87,6 +93,12 @@ class PurePursuitNode(Node):
         self.get_logger().info("path data has been initialized")
         self.get_logger().debug(f"path_data: {self.path_data}")
         self.get_logger().debug(f"indices: {self.indices}")
+
+        self.completed = False # 完了フラグをリセット
+        self.result_msg = None # Resultをリセット
+        self.start_pure_pursuit = True # pure pursuitの開始フラグをセット
+        self.goal_handle = goal_handle
+
         # 新しいスレッドで条件が満たされるのを待つ
         threading.Thread(target=self.wait_for_condition).start()
         self.goal_event.wait()  # 条件が満たされるまで待つ
@@ -100,7 +112,7 @@ class PurePursuitNode(Node):
         self.goal_event.set()
 
     def pose_callback (self, msg: PoseStamped) -> None:
-        self.get_logger().info(f"start_pure_pursuit: {self.start_pure_pursuit}")
+        self.get_logger().debug(f"start_pure_pursuit: {self.start_pure_pursuit}")
         # pure pursuitの開始フラグが立っていない場合は何もしない
         if not self.start_pure_pursuit:
             self.get_logger().warn("pure pursuit has not started yet")
@@ -111,21 +123,36 @@ class PurePursuitNode(Node):
         # 位置の受け取りと格納
         self.robot_pose = self.pose_to_array(msg) # 位置の格納
         self.get_logger().debug(f"x: {self.robot_pose[0]}, y: {self.robot_pose[1]}, theta: {self.robot_pose[2]}")
-        # 先行点の計算
-        lookahead_point: NDArray[np.float64] = None
-        lookahead_point, self.current_path_index = self.find_lookahead_point (self.robot_pose, self.path_data, self.lookahead_distance, self.distance_threshold, self.robot_pose[:2], self.current_path_index)
-        self.get_logger().info(f"lookahead_point: {lookahead_point}")
         # 最も近い点の計算
-        closest_point: NDArray[np.float64] = None
-        closest_point, self.closest_index = self.find_closest_point (self.robot_pose, self.path_data, self.robot_pose, self.closest_index)
+        # self.closest_point, self.closest_index = self.find_closest_point (
+            # self.robot_pose, self.path_data, self.closest_point, self.closest_index)
+        # 先行点の計算
+        self.closest_point, self.lookahead_point, self.current_path_index = self.find_lookahead_point (
+            self.robot_pose, self.path_data, self.lookahead_distance, self.current_path_index)
+        self.get_logger().debug(f"closest_point: {self.closest_point}")
+        self.get_logger().debug(f"lookahead_point: {self.lookahead_point}")
+        lookahead_pose = PoseStamped()
+        lookahead_pose.header.stamp = self.get_clock().now().to_msg()
+        lookahead_pose.header.frame_id = "map"
+        lookahead_pose.pose.position.x = self.lookahead_point[0]
+        lookahead_pose.pose.position.y = self.lookahead_point[1]
+        closest_pose = PoseStamped()
+        closest_pose.header.stamp = self.get_clock().now().to_msg()
+        closest_pose.header.frame_id = "map"
+        closest_pose.pose.position.x = self.closest_point[0]
+        closest_pose.pose.position.y = self.closest_point[1]
+        # closest_pose.pose.orientation = self.yaw_to_quaternion(self.closest_point[2])
+        self.lookahead_pub.publish(lookahead_pose) # 先行点パブリッシュ
+        self.closest_pub.publish(closest_pose) # 最も近い点パブリッシュ
+
         # 速度入力の計算
-        vel: NDArray[np.float64] = self.compute_velocity (self.robot_pose, lookahead_point, closest_point, self.lookahead_distance, self.speed)
+        vel: NDArray[np.float64] = self.compute_velocity (
+            self.robot_pose, self.lookahead_point, self.closest_point, self.current_speed)
         vel_msg: Twist = self.vel_to_Twist (vel)
         self.vel_pub.publish(vel_msg) # 速度入力パブリッシュ
         self.get_logger().debug(f"v_x: {vel_msg.linear.x}, v_y: {vel_msg.linear.y}, omega: {vel_msg.angular.z}")
         self.current_speed, self.current_lookahead_distance = self.change_speed_lookahead_distance (
-            self.path_data, self.current_lookahead_distance, self.current_speed, self.angles, self.max_angle, closest_point, self.closest_index
-        )
+            self.path_data, self.lookahead_distance, self.current_lookahead_distance, self.speed, self.current_speed, self.angles, self.max_angle, self.closest_point, self.closest_index)
 
         # 完了処理
         if self.closest_index in self.indices:
@@ -144,39 +171,57 @@ class PurePursuitNode(Node):
             robot_pose: NDArray[np.float64], 
             path_data: NDArray[np.float64], 
             lookahead_distance: float,
-            distance_threshold: float,
-            previous_point: NDArray[np.float64],
             previous_index: int
         ) -> tuple[NDArray[np.float64], int]:
-        lookahead_point: NDArray[np.float64] = previous_point
-        index: int = previous_index
+        closest_index = previous_index
+        min_distance = float('inf')
+        lookahead_point = None
+        search_range = 50  # 前後の検索範囲
 
-        for i in range(previous_index + 1, len(path_data)):
+        # 最も近い点の検索
+        for i in range(max(0, previous_index - search_range), min(len(path_data), previous_index + search_range)):
             point = path_data[i]
-            if abs(self.distance(robot_pose[:2], point[:2]) - lookahead_distance) < distance_threshold:
+            distance = np.linalg.norm(robot_pose[:2] - point[:2])
+            if distance < min_distance:
+                min_distance = distance
+                closest_point = point
+                closest_index = i
+
+        # 先行点の計算
+        for i in range(closest_index, min(len(path_data) - 1, closest_index + search_range)):
+            point = path_data[i]
+            to_vector = robot_pose[:2] - point[:2]
+            dot_product = np.dot(to_vector, path_data[i+1][:2] - point[:2])
+            distance = np.linalg.norm(to_vector)
+            if distance >= lookahead_distance and dot_product < 0.0:
                 lookahead_point = point
-                index = i
                 break
 
-        return lookahead_point, index
+        if lookahead_point is None:
+            lookahead_point = path_data[min(len(path_data) - 1, closest_index + search_range)][:2]
+
+        return closest_point, lookahead_point, closest_index
 
     def find_closest_point (self,
-            robot_pose: NDArray[np.float64], 
+            robot_pose: NDArray[np.float64],
             path_data: NDArray[np.float64],
             previous_point: NDArray[np.float64],
             previous_index: int
         ) -> tuple[NDArray[np.float64], int]:
         closest_point: NDArray[np.float64] = previous_point
-        closest_index: int = -1
+        closest_index: int = previous_index
         min_distance: float = float('inf')
 
-        for i in range(previous_index + 1, len(path_data)):
+        for i in range(0, len(path_data)): # previous_indexから始めることで，勝手に点が最後まで計算されるのを防ぐ
             point = path_data[i]
             d = self.distance(robot_pose[:2], point[:2])
-            if d < min_distance:
+            if d < min_distance and abs(i - previous_index) < 50:
                 min_distance = d
                 closest_point = point
                 closest_index = i
+        if closest_index < previous_index:
+            closest_index = previous_index
+            closest_point = path_data[previous_index]
 
         return closest_point, closest_index
 
@@ -217,7 +262,7 @@ class PurePursuitNode(Node):
         return vel
 
     def compute_path_P_input (self, 
-            robot_position: NDArray[np.float64], 
+            robot_pose: NDArray[np.float64], 
             closest_point: NDArray[np.float64],
             closest_index: int,
             angles: NDArray[np.float64],
@@ -225,11 +270,11 @@ class PurePursuitNode(Node):
             path_p_gain: float
         ) -> NDArray[np.float64]:
         # p_input_vel = path_p_gain * (closest_point - robot_position)
-        p_input_vel = path_p_gain * (1.0 + (1.0 / 10.0 - 1.0) * angles[closest_index] / max_angle) * (closest_point - robot_position)[:2]
+        p_input_vel = path_p_gain * (1.0 + (1.0 / 10.0 - 1.0) * angles[closest_index] / max_angle) * (closest_point - robot_pose)[:2]
         return p_input_vel
 
     def compute_angle_PI (self, robot_pose: NDArray[np.float64], closest_point: NDArray[np.float64], dt: float = 0.1) -> float:
-        return self.angle_controller.update(robot_pose[2], closest_point[2], )
+        return self.angle_controller.update(robot_pose[2], closest_point[2], dt)
 
     def compute_tangents (self, path_data: NDArray[np.float64]) -> NDArray[np.float64]:
         # 接ベクトルの計算
@@ -313,6 +358,28 @@ class PurePursuitNode(Node):
         yaw = np.arctan2(siny_cosp, cosy_cosp)
         
         return yaw
+
+    def yaw_to_quaternion(self, yaw_degrees: float) -> Quaternion:
+        # Yaw角度をラジアンに変換
+        yaw_radians = np.radians(yaw_degrees)
+        
+        # 四元数を計算
+        qx = 0.0
+        qy = 0.0
+        qz = np.sin(yaw_radians / 2.0)
+        qw = np.cos(yaw_radians / 2.0)
+        
+        return Quaternion(x=qx, y=qy, z=qz, w=qw)
+    
+    def rotation_matrix(self, angle: float) -> NDArray[np.float64]:
+        """
+        description: 2次元の回転行列を計算する。
+        angle: 回転角 (ラジアン)
+        """
+        return np.array([
+            [np.cos(angle), -np.sin(angle)],
+            [np.sin(angle), np.cos(angle)]
+        ])
     
     def first_order_vel(self, previous_vel, input_vel, K, dt, tau):
         new_vel = (tau * previous_vel + K * dt * input_vel) / (tau + dt)
