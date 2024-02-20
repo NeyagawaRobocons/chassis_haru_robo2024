@@ -13,19 +13,17 @@ find_package(rclpy REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(visualization_msgs REQUIRED)
 find_package(mecha_control REQUIRED)
 find_package(robot_master REQUIRED)
-# find_package(pure_pursuit REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
 
 find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/PointAndAngle.msg"
   "msg/Path2DWithAngles.msg"
   "action/PathAndFeedback.action"
-  # DEPENDENCIES pure_pursuit
 )
 ament_export_dependencies(rosidl_default_runtime)
 
@@ -69,6 +67,11 @@ install(PROGRAMS
   pure_pursuit/mecha_state_publisher.py
   pure_pursuit/path_server.py
   pure_pursuit/robot_manual_controller.py
+  pure_pursuit/action_client.py
+  pure_pursuit/path_generator_node.py
+  pure_pursuit/twist_visualizer.py
+  pure_pursuit/PI_controller_class.py
+  pure_pursuit/twist_to_twiststamped.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
