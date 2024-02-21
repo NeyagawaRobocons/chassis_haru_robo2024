@@ -74,3 +74,21 @@ geometry_msgs/Vector3 velocity
 std_msgs/Header header
 PoseWithVel[ ] poses
 ```
+
+## dependencies
+- laser_filters
+  - url: https://github.com/ros-perception/laser_filters.git
+  - branch: ros2
+- emcl2
+  - url: https://github.com/CIT-Autonomous-Robot-Lab/emcl2_ros2.git
+  - branch: main
+- ldlidar
+  - url: https://github.com/Pylgos/ldlidar.git
+  - branch: ros2
+- nav2
+- nucleo_agent
+  - url: https://github.com/NeyagawaRobocons/nucleo_agent.git
+  - branch: main
+- mecha_control
+  - url: https://github.com/NeyagawaRobocons/mecha_control.git
+  - branch: main
