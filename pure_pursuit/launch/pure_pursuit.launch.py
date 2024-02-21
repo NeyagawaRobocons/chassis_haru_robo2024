@@ -16,9 +16,14 @@ def generate_launch_description():
     return LaunchDescription([
         # localize_nodeの起動
         Node(
-            package='calc_vel',     # localize_nodeが属するパッケージ名
+            package='localize',     # localize_nodeが属するパッケージ名
             executable='localize_node',     # localize_nodeの実行可能ファイル名
             name='localize_node'            # localize_nodeのノード名
+        ),
+        Node(
+            package='odometry_calculator',
+            executable='odometry_node',
+            name='odometry_node'
         ),
         # robot_tf_nodeの起動
         Node(
@@ -26,73 +31,62 @@ def generate_launch_description():
             executable='robot_tf_node',     # robot_tf_nodeの実行可能ファイル名
             name='robot_tf_node',           # robot_tf_nodeのノード名
             parameters=[
-                {'header_frame_id': 'map'},
-                {'child_frame_id': 'base_link'},
-                {'topic_name': 'robot_pose'}
+                {'header_frame_id': 'odom'},
+                {'child_frame_id': 'base_footprint'},
+                {'topic_name': 'odometry_pose'}
             ]
         ),
+        # static tfの起動
         Node(
-            package='calc_vel',           # robot_tf_nodeが属するパッケージ名
-            executable='robot_tf_node',     # robot_tf_nodeの実行可能ファイル名
-            name='goal_tf_node',           # robot_tf_nodeのノード名
-            parameters=[
-                {'header_frame_id': 'map'},
-                {'child_frame_id': 'goal_link'},
-                {'topic_name': 'goal_pose'}
-            ]
+            package='tf2_ros',           # static tfが属するパッケージ名
+            executable='static_transform_publisher',     # static tfの実行可能ファイル名
+            name='static_transform_publisher',           # static tfのノード名
+            arguments=['0', '0', '0', '0', '0', '0', 'base_footprint', 'base_link']
         ),
-        # pose_PI_simulatorの起動
         Node(
-            package='calc_vel',  # pose_PI_simulatorが属するパッケージ名
-            executable='PI_simulator', # pose_PI_simulatorの実行可能ファイル名
-            name='pose_PI_simulator'        # pose_PI_simulatorのノード名
+            package='tf2_ros',           # static tfが属するパッケージ名
+            executable='static_transform_publisher',     # static tfの実行可能ファイル名
+            name='static_transform_publisher',           # static tfのノード名
+            arguments=['0.2699', '0.2699', '0', '0', '0', str(-np.pi * 3.0 / 4.0), 'base_link', 'laser']
+        ),
+        Node(
+            package='calc_wheel_vel',           # calc_wheel_vel_nodeが属するパッケージ名
+            executable='calc_wheel_vel',     # calc_wheel_vel_nodeの実行可能ファイル名
+            name='calc_wheel_vel',           # calc_wheel_vel_nodeのノード名
         ),
         # rviz2の起動
         Node(
             package='rviz2',
             executable='rviz2',
             name='rviz2',
-            arguments=['-d', os.path.join(get_package_share_directory('calc_vel'), 'robot_tf.rviz')]  # rviz2の設定ファイルのパス
-        ),
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='static_tf_pub_field_data',
-            arguments=['1.562', '0', '3.112', '0', '0', str(-np.pi/2.0), 'field_data', 'map'],
-            output='screen'
-        ),
-        # stl_marker_publisherの起動
-        Node(
-            package='calc_vel',
-            executable='stl_marker_publisher',
-            name='field_marker_publisher',
-            parameters=[{
-                'stl_file_path': '/home/tonto2423/ros2_ws/src/chassis_haru_robo2024/calc_vel/mesh/field.stl',
-                'frame_id': 'field_data',
-                'topic_name': 'field_marker'
-            }],
-            output='screen'
-        ),
-        Node(
-            package='calc_vel',
-            executable='stl_marker_publisher',
-            name='robot_marker_publisher',
-            parameters=[{
-                'stl_file_path': '/home/tonto2423/ros2_ws/src/chassis_haru_robo2024/calc_vel/mesh/robot.stl',
-                'frame_id': 'base_link',
-                'topic_name': 'robot_marker'
-            }],
-            output='screen'
+            arguments=['-d', 
+                os.path.join(get_package_share_directory('pure_pursuit'), 'rviz', 'robot_tf.rviz')]  # rviz2の設定ファイルのパス
         ),
         Node(
             package='pure_pursuit',
-            executable='pure_pursuit_node',
+            executable='twist_to_twiststamped.py',
+            name='twist_to_twiststamped',
+        ),
+        Node(
+            package='pure_pursuit',
+            executable='pure_pursuit_node.py',
             name='pure_pursuit_node',
-            parameters=[{
-                'on_way_points': [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]],
-                'speed': 0.5, # [m/s]
-                'lookahead_distance': 0.1 # [m]
-            }],
-            output='screen'
-        )
+            parameters=[
+                {'speed': 0.5},
+                {'lookahead_distance': 0.3},
+                {'path_p_gain': 0.05},
+                {'angle_p_gain': 0.1},
+                {'angle_i_gain': 0.0},
+                {'initial_pose': [1.562, -3.112, 0.0]},
+            ]
+        ),
     ])
+
+"""
+other launch file
+---
+ros2 launch emcl2 emcl2.launch.py 
+ros2 launch ldlidar ldlidar.launch.py 
+ros2 launch laser_filters angular_filter_example.launch.py 
+
+"""
