@@ -202,29 +202,6 @@ class PurePursuitNode(Node):
 
         return closest_point, lookahead_point, closest_index
 
-    def find_closest_point (self,
-            robot_pose: NDArray[np.float64],
-            path_data: NDArray[np.float64],
-            previous_point: NDArray[np.float64],
-            previous_index: int
-        ) -> tuple[NDArray[np.float64], int]:
-        closest_point: NDArray[np.float64] = previous_point
-        closest_index: int = previous_index
-        min_distance: float = float('inf')
-
-        for i in range(0, len(path_data)): # previous_indexから始めることで，勝手に点が最後まで計算されるのを防ぐ
-            point = path_data[i]
-            d = self.distance(robot_pose[:2], point[:2])
-            if d < min_distance and abs(i - previous_index) < 50:
-                min_distance = d
-                closest_point = point
-                closest_index = i
-        if closest_index < previous_index:
-            closest_index = previous_index
-            closest_point = path_data[previous_index]
-
-        return closest_point, closest_index
-
     def compute_velocity (self,
             robot_pose: NDArray[np.float64], 
             lookahead_point: NDArray[np.float64],
