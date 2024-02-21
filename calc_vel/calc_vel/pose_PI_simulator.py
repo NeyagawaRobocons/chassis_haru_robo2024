@@ -40,7 +40,8 @@ class OdometryCalculator(Node):
         # 前回のコールバック時間
         self.last_time = self.get_clock().now()
         # 定期的にオドメトリー情報をpublish
-        self.timer = self.create_timer(0.05, self.timer_callback)
+        self.dt = 0.05 # 50ms
+        self.timer = self.create_timer(self.dt, self.timer_callback)
         self.get_logger().info('pose_PI_simulator has been started')
         self.get_logger().info('radius: %f' % self.radius)
         self.get_logger().info('length: %f' % self.length)
@@ -53,6 +54,9 @@ class OdometryCalculator(Node):
     def velocity_callback(self, msg):
         current_time = self.get_clock().now()
         dt = (current_time - self.last_time).nanoseconds / 1e9
+        if dt > 10 * self.dt:
+            self.get_logger().warn('dt is too large: %f' % dt)
+            dt = self.dt
         self.last_time = current_time
 
         # 速度指令を受け取る
