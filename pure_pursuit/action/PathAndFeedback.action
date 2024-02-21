@@ -1,7 +1,7 @@
 # パスとフィードバックのデータ
 
 # ゴール定義
-pure_pursuit/Path2DWithAngles path_with_angles
+pure_pursuit/Path2DWithAngles path
 int32[] feedback_indices
 ---
 # 結果定義

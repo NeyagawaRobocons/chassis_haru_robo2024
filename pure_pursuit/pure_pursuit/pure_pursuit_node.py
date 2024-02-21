@@ -127,8 +127,8 @@ class PurePursuitNode(Node):
         # self.closest_point, self.closest_index = self.find_closest_point (
             # self.robot_pose, self.path_data, self.closest_point, self.closest_index)
         # 先行点の計算
-        self.closest_point, self.lookahead_point, self.current_path_index = self.find_lookahead_point (
-            self.robot_pose, self.path_data, self.lookahead_distance, self.current_path_index)
+        self.closest_point, self.lookahead_point, self.closest_index = self.find_lookahead_point (
+            self.robot_pose, self.path_data, self.lookahead_distance, self.closest_index)
         self.get_logger().debug(f"closest_point: {self.closest_point}")
         self.get_logger().debug(f"lookahead_point: {self.lookahead_point}")
         lookahead_pose = PoseStamped()

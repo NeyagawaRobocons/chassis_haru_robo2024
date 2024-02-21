@@ -1,19 +1,9 @@
 # outline of pure_puresuit_node.py
 ## input
-- `/tf` (topic):
-  - description: get the pose of robot
-  - child_frame_id: `base_footprint` 
-  - parent_frame_id: `map`
-
-- `/odometry_pose` (topic):
-  - description: get the pose of robot by odometry. use it for the timing of get tf pose
-  - node: `odometry_node`
+- `/robot_pose` (topic):
+  - description: get the pose of robot by tf
+  - node: `localize_node`
   - type: geometry_msgs/msg/PoseStamped
-
-- `/mcl_pose` (topic):
-  - description: get the pose of robot by mcl. use it for the timing of get tf pose
-  - node: `emcl2`
-  - type: geometry_msgs/msg/PoseWithCovarianceStamped
 
 - `/path_and_feedback` (action):
   - description: 経路データと経路上の特定の点のインデックスを渡し、特定の点を通過したというフィードバックをもらう。ゴールしたら結果が返ってくる。
@@ -92,9 +82,8 @@ from pure_pursuit.msg import Path2DWithAngles
 
 class PurePursuitNode(Node):
     def __init__ () -> None:
-        # トピック，TF，アクションの初期化
-        self.odom_sub = self.create_subscription(PoseStamped, '/odometry_pose', self.odom_callback, 10)
-        self.mcl_sub = self.create_subscription(PoseWithCovarianceStamped, '/mcl_pose', self.mcl_callback, 10)
+        # トピック, アクションの初期化
+        self.pose_sub = self.create_subscription(PoseStamped, '/robot_pose', self.pose_callback, 10)
         self.path_and_feedback_action
         self.vel_pub = self.create_publisher(Twist, '/robot_vel', 10)
         # パラメータの初期化
@@ -125,13 +114,7 @@ class PurePursuitNode(Node):
         接ベクトルの計算と格納(経路データ)
         法線ベクトルの計算と格納(接ベクトル)
 
-    def odometry_callback () -> None:
-        自己位置TFコールバック()
-
-    def mcl_callback () -> None:
-        自己位置TFコールバック()
-
-    def 自己位置TFコールバック () -> None:
+    def pose_callback () -> None:
         自己位置の格納
         速度入力の決定(自己位置, 経路データ, 接ベクトル, 法線ベクトル)
         Twistに格納
@@ -188,3 +171,41 @@ if __name__ == '__main__':
     main()
 
 ```
+
+# path_generator_node.py
+### ノード名: path_generator_node
+
+### 概要
+`path_generator_node`は、指定された特定のポイントとそれらのポイントでのロボットのメカニズムコマンドからパスデータを生成し、ベジエ曲線でこれらを補間するノードです。補間されたパスは、より滑らかなロボットの動きを実現するために使用されます。
+
+### パラメーター
+1. **特定のポイント**
+   - **形式**: ROSパラメータ (YAMLファイル) からのリスト
+   - **内容**: 特定のポーズ（x, y, theta）と、そのポイントでのコマンドを含むリスト。
+   - **例**: 
+   ```
+    [
+      [x, y, theta, command: MechaState], 
+      [x, y, theta, command: MechaState], 
+      [x, y, theta, command: MechaState]
+    ]
+   ```
+
+2. **出力YAMLファイルパス**
+   - **説明**: 生成されたパスデータを保存するYAMLファイルのパス。
+
+### 出力
+- **ファイル**: 指定されたYAMLファイルに以下の情報を保存します。
+  - **パス**: 補間されたポイントのリスト。各ポイントは `[x, y, theta]` の形式。
+  - **インデックス**: 特定のポーズとコマンドのポイントに対応するインデックスのリスト。
+  - **コマンド**: コマンドのリスト。各コマンドは、特定のポイントでのロボットのメカニズムの状態を指示します。
+
+### コマンドの種類 (`mecha_control/msg/MechaState.msg`)
+- `byte daiza_state`: 展開(1)、回収(2)、設置(3)、格納(4)
+- `byte hina_state`: 同上
+- `bool bonbori_state`: ぼんぼりオフ(false)、ぼんぼり点灯(true)
+
+### 実装の要点
+- 特定のポイントとコマンドを入力として受け取り、ベジエ曲線を用いてパスを補間する。
+- 補間されたパスと関連情報をYAMLファイルに保存する。
+- ROS 2のパラメータ機能を活用して入力を読み込み、指定されたパスに結果を出力する。
