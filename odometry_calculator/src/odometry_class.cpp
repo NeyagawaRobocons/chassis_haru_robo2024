@@ -16,12 +16,12 @@ deltaPose2D Odometry::calc_vel(double _tire_angles[3]) {
     // double delta_x = radius * 2.0 / 3.0 * (-delta_angle[0] + delta_angle[1] / 2.0 + delta_angle[2] / 2.0);
     // double delta_y = radius * 2.0 / 3.0 * (-delta_angle[1] + delta_angle[2]) * 0.866025403784;
     // 四角形の配置の場合
-    double delta_x = - radius * delta_angle[1] + radius * (delta_angle[0] + delta_angle[2]) / 2.0; // 仮想の４輪目の速度を加えて補正
-    double delta_y = radius * (delta_angle[0] - delta_angle[2]) / 2.0;
+    double delta_x =  radius * delta_angle[1] - radius * (delta_angle[0] + delta_angle[2]) / 2.0; // 仮想の４輪目の速度を加えて補正
+    double delta_y = -radius * (delta_angle[0] - delta_angle[2]) / 2.0;
     // ロボットの向きに合わせて速度ベクトルを回転
     delta_pose.x = delta_x * cos(pose.theta) - delta_y * sin(pose.theta);
     delta_pose.y = delta_x * sin(pose.theta) + delta_y * cos(pose.theta);
-    delta_pose.theta = radius * (delta_angle[0] + delta_angle[2]) / 2.0 / length;
+    delta_pose.theta = -radius * (delta_angle[0] + delta_angle[2]) / 2.0 / length;
     update_angles(_tire_angles); // 前回カウントの更新
     return delta_pose;
 }

@@ -14,16 +14,17 @@ def generate_launch_description():
     # )
 
     return LaunchDescription([
-        # localize_nodeの起動
-        Node(
-            package='localize',     # localize_nodeが属するパッケージ名
-            executable='localize_node',     # localize_nodeの実行可能ファイル名
-            name='localize_node'            # localize_nodeのノード名
-        ),
+        # # localize_nodeの起動
+        # Node(
+        #     package='localize',     # localize_nodeが属するパッケージ名
+        #     executable='localize_node',     # localize_nodeの実行可能ファイル名
+        #     name='localize_node'            # localize_nodeのノード名
+        # ),
         Node(
             package='odometry_calculator',
             executable='odometry_node',
-            name='odometry_node'
+            name='odometry_node',
+            output='log'
         ),
         # robot_tf_nodeの起動
         Node(
@@ -40,14 +41,14 @@ def generate_launch_description():
         Node(
             package='tf2_ros',           # static tfが属するパッケージ名
             executable='static_transform_publisher',     # static tfの実行可能ファイル名
-            name='static_transform_publisher',           # static tfのノード名
+            name='static_transform_publisher1',           # static tfのノード名
             arguments=['0', '0', '0', '0', '0', '0', 'base_footprint', 'base_link']
         ),
         Node(
             package='tf2_ros',           # static tfが属するパッケージ名
             executable='static_transform_publisher',     # static tfの実行可能ファイル名
-            name='static_transform_publisher',           # static tfのノード名
-            arguments=['0.2699', '0.2699', '0', '0', '0', str(-np.pi * 3.0 / 4.0), 'base_link', 'laser']
+            name='static_transform_publisher2',           # static tfのノード名
+            arguments=['0.2699', '0.2699', '0', str(-np.pi * 3.0 / 4.0), '0', '0', 'base_link', 'laser']
         ),
         Node(
             package='calc_wheel_vel',           # calc_wheel_vel_nodeが属するパッケージ名

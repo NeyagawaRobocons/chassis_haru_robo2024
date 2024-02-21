@@ -35,8 +35,6 @@ setup(
             'path_server = pure_pursuit.path_server:main',
             'robot_manual_controller = pure_pursuit.robot_manual_controller:main',
             'action_client = pure_pursuit.action_client:main',
-            'path_generator_node = pure_pursuit.path_generator_node',
-            'twist_visualizer = pure_pursuit.twist_visualizer:main',
             'twist_to_twist_stamped = pure_pursuit.twist_to_twist_stamped:main',
         ],
     },

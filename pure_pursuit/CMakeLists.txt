@@ -68,8 +68,6 @@ install(PROGRAMS
   pure_pursuit/path_server.py
   pure_pursuit/robot_manual_controller.py
   pure_pursuit/action_client.py
-  pure_pursuit/path_generator_node.py
-  pure_pursuit/twist_visualizer.py
   pure_pursuit/PI_controller_class.py
   pure_pursuit/twist_to_twiststamped.py
   DESTINATION lib/${PROJECT_NAME}

@@ -57,7 +57,7 @@ class PathActionClient(Node):
 
     def get_path(self):
         path = []
-        df = pd.read_csv('/home/tonto2423/ros2_ws/src/chassis_haru_robo2024/pure_pursuit/csv/path.csv')
+        df = pd.read_csv('/home/nwrc/ros_ws/src/chassis_haru_robo2024/pure_pursuit/csv/path.csv')
         for i in range(len(df)):
             point = PointAndAngle()
             point.x = df.at[i, 'x']
@@ -68,7 +68,7 @@ class PathActionClient(Node):
     
     def get_indices(self):
         indices = []
-        df = pd.read_csv('/home/tonto2423/ros2_ws/src/chassis_haru_robo2024/pure_pursuit/csv/indices_and_commands.csv')
+        df = pd.read_csv('/home/nwrc/ros_ws/src/chassis_haru_robo2024/pure_pursuit/csv/indices_and_commands.csv')
         for i in range(len(df)):
             indices.append(df.at[i, 'index'])
         return indices
