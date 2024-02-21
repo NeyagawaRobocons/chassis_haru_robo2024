@@ -74,7 +74,7 @@ install(PROGRAMS
 )
 
 install(
-  DIRECTORY launch rviz
+  DIRECTORY launch rviz csv
   DESTINATION share/${PROJECT_NAME}
 )
 
