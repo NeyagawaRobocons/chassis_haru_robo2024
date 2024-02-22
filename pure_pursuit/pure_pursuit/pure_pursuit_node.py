@@ -39,8 +39,7 @@ class PurePursuitNode(Node):
                 ('speed_magnification', 2.0),
                 ('path_p_magnification', 10.0),
                 ('dt', 0.05) # [s]
-            ]
-        )
+            ])
         # パラメータの取得
         self.speed = self.get_parameter('speed').value
         self.lookahead_distance = self.get_parameter('lookahead_distance').value
@@ -106,6 +105,7 @@ class PurePursuitNode(Node):
         threading.Thread(target=self.wait_for_condition).start()
         self.goal_event.wait()  # 条件が満たされるまで待つ
         goal_handle.succeed()
+
         return self.result_msg
 
     def wait_for_condition(self):
@@ -203,15 +203,17 @@ class PurePursuitNode(Node):
         vel: NDArray[np.float64] = np.array([0.0, 0.0, 0.0])
         vel[:2] = self.pure_pursuit_vel + self.p_control_vel
         vel[2] = omega
+
         return vel
-    
+
     def vel_to_Twist (self, vel: NDArray[np.float64]) -> Twist:
         vel_msg = Twist()
         vel_msg.linear.x = vel[0]
         vel_msg.linear.y = vel[1]
         vel_msg.angular.z = vel[2] # omega
+
         return vel_msg
-    
+
     def vel_to_TwistStamped (self, vel: NDArray[np.float64]) -> TwistStamped:
         vel_msg = TwistStamped()
         vel_msg.header.stamp = self.get_clock().now().to_msg()
@@ -219,8 +221,9 @@ class PurePursuitNode(Node):
         vel_msg.twist.linear.x = vel[0]
         vel_msg.twist.linear.y = vel[1]
         # vel_msg.twist.angular.z = vel[2] # omega (not used)
+
         return vel_msg
-    
+
     def rotate_vel (self, vel: NDArray[np.float64], angle: float) -> NDArray[np.float64]:
         vel[:2] = vel[:2] @ self.rotation_matrix(angle).T # ロボット座標系に変換
         return vel
@@ -245,6 +248,7 @@ class PurePursuitNode(Node):
         pose_msg.pose.position.x = array[0]
         pose_msg.pose.position.y = array[1]
         pose_msg.pose.orientation = self.yaw_to_quaternion(array[2] + np.pi / 2.0) # ロボット前方向に向ける
+
         return pose_msg
 
     def calc_pure_pursuit_vel (self,
@@ -258,6 +262,7 @@ class PurePursuitNode(Node):
         if np.linalg.norm(direction) > 0.0:
             direction /= np.linalg.norm(direction) # 方向ベクトルの正規化
         vel = direction * speed
+
         return vel
 
     def compute_path_P_input (self, 
@@ -270,6 +275,7 @@ class PurePursuitNode(Node):
         ) -> NDArray[np.float64]:
         # p_input_vel = path_p_gain * (closest_point - robot_position)
         p_input_vel = path_p_gain * (1.0 + (1.0 / self.path_p_magnification - 1.0) * angles[closest_index] / max_angle) * (closest_point - robot_pose)[:2]
+
         return p_input_vel
 
     def compute_angle_PI (self, robot_pose: NDArray[np.float64], closest_point: NDArray[np.float64], dt: float = 0.1) -> float:
@@ -280,8 +286,9 @@ class PurePursuitNode(Node):
         path_x = path_data[:, 0]
         path_y = path_data[:, 1]
         tangents = np.array([np.gradient(path_x), np.gradient(path_y)]).T  # 各点における接ベクトル
+
         return tangents
-    
+
     def compute_angles (self, tangents: NDArray[np.float64]) -> tuple[NDArray[np.float64], float]:
         angles = []
 
@@ -298,7 +305,7 @@ class PurePursuitNode(Node):
         max_angle = np.max(angles)
 
         return angles, max_angle
-    
+
     def change_speed_lookahead_distance (self, 
             path_data: NDArray[np.float64],
             lookahead_distance: float,
@@ -322,6 +329,7 @@ class PurePursuitNode(Node):
             current_LA_dist = lookahead_distance * (1.0 + (1.0 / self.LA_magnification - 1.0) * angles[closest_index] / max_angle)
             target_speed = speed * (1.0 + (1.0 / self.speed_magnification - 1.0) * angles[closest_index] / max_angle)
             current_speed = self.first_order_vel(current_speed, target_speed, 1.0, 0.05, 0.5)
+
         return current_speed, current_LA_dist
 
     def pose_to_array (self, msg: PoseStamped) -> NDArray[np.float64]:
@@ -335,12 +343,13 @@ class PurePursuitNode(Node):
             msg.pose.orientation.w
         ])
         robot_pose[2] = self.quaternion_to_yaw(q)
+
         return robot_pose
 
     def distance (self, p1: NDArray[np.float64], p2: NDArray[np.float64]) -> float:
         # 2点間の距離を計算
         return np.linalg.norm(p1 - p2)
-        
+
     def quaternion_to_yaw(self, q: NDArray[np.float64]) -> float:
         """
         description: クォータニオンからヨー角(ズ軸回りの回転)を計算する。
@@ -367,7 +376,7 @@ class PurePursuitNode(Node):
         qw = np.cos(yaw_radians / 2.0)
         
         return Quaternion(x=qx, y=qy, z=qz, w=qw)
-    
+
     def rotation_matrix(self, angle: float) -> NDArray[np.float64]:
         """
         description: 2次元の回転行列を計算する。

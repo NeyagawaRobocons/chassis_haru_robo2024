@@ -61,6 +61,23 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+ament_auto_add_executable(tf_to_posestamped src/tf_to_posestamped.cpp)
+target_include_directories(tf_to_posestamped PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(tf_to_posestamped PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+ament_target_dependencies(
+  tf_to_posestamped
+  "rclcpp"
+  "geometry_msgs"
+  "tf2_ros"
+)
+
+install(TARGETS
+  tf_to_posestamped
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

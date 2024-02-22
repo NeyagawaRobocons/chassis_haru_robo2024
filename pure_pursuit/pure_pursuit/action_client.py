@@ -8,6 +8,8 @@ from pure_pursuit.action import PathAndFeedback
 from pure_pursuit.msg import Path2DWithAngles, PointAndAngle
 from mecha_control.msg import MechaState
 import pandas as pd
+import os
+from ament_index_python.packages import get_package_share_directory
 
 class PathActionClient(Node):
     def __init__(self):
@@ -57,7 +59,7 @@ class PathActionClient(Node):
 
     def get_path(self):
         path = []
-        df = pd.read_csv('/home/nwrc/ros_ws/src/chassis_haru_robo2024/pure_pursuit/csv/path.csv')
+        df = pd.read_csv(os.path.join(get_package_share_directory('pure_pursuit'), 'csv', 'path.csv'))
         for i in range(len(df)):
             point = PointAndAngle()
             point.x = df.at[i, 'x']
@@ -68,7 +70,7 @@ class PathActionClient(Node):
     
     def get_indices(self):
         indices = []
-        df = pd.read_csv('/home/nwrc/ros_ws/src/chassis_haru_robo2024/pure_pursuit/csv/indices_and_commands.csv')
+        df = pd.read_csv(os.path.join(get_package_share_directory('pure_pursuit'), 'csv', 'indices_and_commands.csv'))
         for i in range(len(df)):
             indices.append(df.at[i, 'index'])
         return indices

@@ -1,0 +1,10 @@
+path_generator_node:
+  ros__parameters:
+    path_density: 30
+    output_file: "path.yaml"
+    poses: "[[1.0, 2.0, 0.0], [2.0, 3.0, 1.57], [3.0, 4.0, 3.14]]"
+    # poses: [[0.0, 0.0, 0.0]]
+    # commands: # daiza_state, hina_state, bonbori_state
+    #   - [0, 0, False]
+    #   - [1, 1, True]
+    #   - [2, 2, False]
