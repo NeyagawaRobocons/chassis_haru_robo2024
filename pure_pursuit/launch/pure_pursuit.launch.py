@@ -1,6 +1,7 @@
 from launch import LaunchDescription
-from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument
+from launch_ros.actions import Node, PushRosNamespace
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 import os
 from ament_index_python.packages import get_package_share_directory
@@ -14,12 +15,22 @@ def generate_launch_description():
     # )
 
     return LaunchDescription([
-        # # localize_nodeの起動
-        # Node(
-        #     package='localize',     # localize_nodeが属するパッケージ名
-        #     executable='localize_node',     # localize_nodeの実行可能ファイル名
-        #     name='localize_node'            # localize_nodeのノード名
-        # ),
+        # localize_nodeの起動
+        Node(
+            package='localize',     # localize_nodeが属するパッケージ名
+            executable='localize_node',     # localize_nodeの実行可能ファイル名
+            name='localize_node'            # localize_nodeのノード名
+        ),
+        Node(
+            package='nucleo_agent',
+            executable='nucleo_agent_node',
+            name='nucleo_agent_node'
+        ),
+        Node(
+            package='nucleo_agent',
+            executable='rp_encoder_agent_node',
+            name='rp_encoder_agent_node'
+        ),
         Node(
             package='odometry_calculator',
             executable='odometry_node',
@@ -48,7 +59,13 @@ def generate_launch_description():
             package='tf2_ros',           # static tfが属するパッケージ名
             executable='static_transform_publisher',     # static tfの実行可能ファイル名
             name='static_transform_publisher2',           # static tfのノード名
-            arguments=['0.2699', '0.2699', '0', str(-np.pi * 3.0 / 4.0), '0', '0', 'base_link', 'laser']
+            arguments=['0.2699', '0.2699', '0', str(-np.pi * 3.0 / 4.0), '0', '0', 'base_link', 'front/laser']
+        ),
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='static_transform_publisher3',
+            arguments=['-0.2699', '-0.2699', '0', str(np.pi / 4.0), '0', '0', 'base_link', 'rear/laser']
         ),
         Node(
             package='calc_wheel_vel',           # calc_wheel_vel_nodeが属するパッケージ名
@@ -81,13 +98,26 @@ def generate_launch_description():
                 {'initial_pose': [1.562, -3.112, 0.0]},
             ]
         ),
+        PushRosNamespace('front'),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([
+                os.path.join(get_package_share_directory('laser_filters'), 'launch', 'angular_filter_example.launch.py')
+            ]),
+        ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([
+                os.path.join(get_package_share_directory('ldlidar'), 'launch', 'ldlidar.launch.py')
+            ])
+        ),
+        PushRosNamespace('rear'),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([
+                os.path.join(get_package_share_directory('laser_filters'), 'launch', 'angular_filter_example.launch.py')
+            ])
+        ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([
+                os.path.join(get_package_share_directory('ldlidar'), 'launch', 'ldlidar.launch.py')
+            ])
+        )
     ])
-
-"""
-other launch file
----
-ros2 launch emcl2 emcl2.launch.py 
-ros2 launch ldlidar ldlidar.launch.py 
-ros2 launch laser_filters angular_filter_example.launch.py 
-
-"""
