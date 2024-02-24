@@ -65,12 +65,19 @@ def generate_launch_description():
             name='static_transform_publisher2',           # static tfのノード名
             arguments=['0.2699', '0.2699', '0', str(-np.pi * 3.0 / 4.0), '0', '0', 'base_link', 'laser']
         ),
+        # Node(
+        #     package='tf2_ros',
+        #     executable='static_transform_publisher',
+        #     name='static_transform_publisher3',
+        #     arguments=['-0.2699', '-0.2699', '0', str(np.pi / 4.0), '0', '0', 'base_link', 'rear/laser']
+        # ),
         Node(
             package='calc_wheel_vel',           # calc_wheel_vel_nodeが属するパッケージ名
             executable='calc_wheel_vel',     # calc_wheel_vel_nodeの実行可能ファイル名
             name='calc_wheel_vel',           # calc_wheel_vel_nodeのノード名
         ),
         # rviz2の起動
+<<<<<<< HEAD
         Node(
             package='rviz2',
             executable='rviz2',
@@ -106,3 +113,53 @@ ros2 launch ldlidar ldlidar.launch.py
 ros2 launch laser_filters angular_filter_example.launch.py 
 
 """
+=======
+        # Node(
+        #     package='rviz2',
+        #     executable='rviz2',
+        #     name='rviz2',
+        #     arguments=['-d', 
+        #         os.path.join(get_package_share_directory('pure_pursuit'), 'rviz', 'robot_tf.rviz')]  # rviz2の設定ファイルのパス
+        # ),
+        # Node(
+        #     package='pure_pursuit',
+        #     executable='twist_to_twiststamped.py',
+        #     name='twist_to_twiststamped',
+        # ),
+        # Node(
+        #     package='pure_pursuit',
+        #     executable='pure_pursuit_node.py',
+        #     name='pure_pursuit_node',
+        #     parameters=[
+        #         {'speed': 0.5},
+        #         {'lookahead_distance': 0.3},
+        #         {'path_p_gain': 0.05},
+        #         {'angle_p_gain': 0.1},
+        #         {'angle_i_gain': 0.0},
+        #         {'initial_pose': [1.562, -3.112, 0.0]},
+        #     ]
+        # ),
+        # PushRosNamespace('front'),
+        # IncludeLaunchDescription(
+        #     PythonLaunchDescriptionSource([
+        #         os.path.join(get_package_share_directory('laser_filters'), 'launch', 'angular_filter_example.launch.py')
+        #     ]),
+        # ),
+        # IncludeLaunchDescription(
+        #     PythonLaunchDescriptionSource([
+        #         os.path.join(get_package_share_directory('ldlidar'), 'launch', 'ldlidar.launch.py')
+        #     ])
+        # ),
+        # PushRosNamespace('rear'),
+        # IncludeLaunchDescription(
+        #     PythonLaunchDescriptionSource([
+        #         os.path.join(get_package_share_directory('laser_filters'), 'launch', 'angular_filter_example.launch.py')
+        #     ])
+        # ),
+        # IncludeLaunchDescription(
+        #     PythonLaunchDescriptionSource([
+        #         os.path.join(get_package_share_directory('ldlidar'), 'launch', 'ldlidar.launch.py')
+        #     ])
+        # )
+    ])
+>>>>>>> bf5424e (change for test)
