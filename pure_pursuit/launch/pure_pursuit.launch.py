@@ -14,17 +14,32 @@ def generate_launch_description():
     # )
 
     return LaunchDescription([
-        # # localize_nodeの起動
         # Node(
-        #     package='localize',     # localize_nodeが属するパッケージ名
-        #     executable='localize_node',     # localize_nodeの実行可能ファイル名
-        #     name='localize_node'            # localize_nodeのノード名
+        #     package='nucleo_agent',
+        #     executable='nucleo_agent_node',
+        #     name='nucleo_agent_node',
         # ),
+        Node(
+            package='nucleo_agent',
+            executable='rp_encoder_agent_node',
+            name='rp_encoder_agent_node',
+        ),
+        # localize_nodeの起動
+        Node(
+            package='localize',     # localize_nodeが属するパッケージ名
+            executable='tf_to_posestamped',     # localize_nodeの実行可能ファイル名
+            name='tf_to_posestamped'            # localize_nodeのノード名
+        ),
         Node(
             package='odometry_calculator',
             executable='odometry_node',
             name='odometry_node',
-            output='log'
+            output='log',
+            parameters=[
+                {'header_frame_id': 'map'},
+                {'child_frame_id': 'base_link'},
+                {'topic_name': 'robot_pose'}
+            ]
         ),
         # robot_tf_nodeの起動
         Node(
@@ -68,19 +83,19 @@ def generate_launch_description():
             executable='twist_to_twiststamped.py',
             name='twist_to_twiststamped',
         ),
-        Node(
-            package='pure_pursuit',
-            executable='pure_pursuit_node.py',
-            name='pure_pursuit_node',
-            parameters=[
-                {'speed': 0.5},
-                {'lookahead_distance': 0.3},
-                {'path_p_gain': 0.05},
-                {'angle_p_gain': 0.1},
-                {'angle_i_gain': 0.0},
-                {'initial_pose': [1.562, -3.112, 0.0]},
-            ]
-        ),
+        # Node(
+        #     package='pure_pursuit',
+        #     executable='pure_pursuit_node.py',
+        #     name='pure_pursuit_node',
+        #     parameters=[
+        #         {'speed': 0.5},
+        #         {'lookahead_distance': 0.3},
+        #         {'path_p_gain': 0.05},
+        #         {'angle_p_gain': 0.1},
+        #         {'angle_i_gain': 0.0},
+        #         {'initial_pose': [1.562, -3.112, 0.0]},
+        #     ]
+        # ),
     ])
 
 """

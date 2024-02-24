@@ -53,6 +53,20 @@ class PurePursuitNode(Node):
         self.speed_magnification = self.get_parameter('speed_magnification').value
         self.path_p_magnification = self.get_parameter('path_p_magnification').value
         self.dt = self.get_parameter('dt').value
+        self.get_logger().info("parameters have been initialized")
+        self.get_logger().info(f"speed: {self.speed}")
+        self.get_logger().info(f"lookahead_distance: {self.lookahead_distance}")
+        self.get_logger().info(f"path_p_gain: {self.path_p_gain}")
+        self.get_logger().info(f"angle_p_gain: {self.angle_p_gain}")
+        self.get_logger().info(f"angle_i_gain: {self.angle_i_gain}")
+        self.get_logger().info(f"distance_threshold: {self.distance_threshold}")
+        self.get_logger().info(f"angle_threshold: {self.angle_threshold}")
+        self.get_logger().info(f"initial_pose: {self.initial_pose}")
+        self.get_logger().info(f"LA_magnification: {self.LA_magnification}")
+        self.get_logger().info(f"speed_magnification: {self.speed_magnification}")
+        self.get_logger().info(f"path_p_magnification: {self.path_p_magnification}")
+        self.get_logger().info(f"dt: {self.dt}")
+        # PI制御器の初期化
         self.angle_controller = PIController(self.angle_p_gain, self.angle_i_gain, max_input=1.0)
         # 準静的な変数の初期化
         self.path_data: NDArray[np.float64] = None # np.array([[x, y, theta], [x, y, theta]])の形
@@ -153,7 +167,7 @@ class PurePursuitNode(Node):
         # 完了処理
         if self.closest_index in self.indices:
             # フィードバックにインデックスを返す
-            self.get_logger().debug(f"feedback: {self.closest_index}, type: {type(self.closest_index)}")
+            self.get_logger().info(f"feedback: {self.closest_index}, type: {type(self.closest_index)}")
             feedback_msg = PathAndFeedback.Feedback()
             feedback_msg.current_index = self.closest_index
             self.goal_handle.publish_feedback(feedback_msg)
@@ -195,10 +209,12 @@ class PurePursuitNode(Node):
         ) -> NDArray[np.float64]:
         self.pure_pursuit_vel = self.rotate_vel(
             self.calc_pure_pursuit_vel(robot_pose, lookahead_point, speed), 
-            -robot_pose[2] + self.angles[self.closest_index])
+            -robot_pose[2])
+        # + self.angles[self.closest_index])
         self.p_control_vel = self.rotate_vel(
             self.compute_path_P_input(robot_pose, closest_point, self.closest_index, self.angles, self.max_angle, self.path_p_gain),
-            -robot_pose[2] + self.angles[self.closest_index])
+            -robot_pose[2])
+        # + self.angles[self.closest_index])
         omega: float = self.compute_angle_PI (closest_point, robot_pose, self.dt)
         vel: NDArray[np.float64] = np.array([0.0, 0.0, 0.0])
         vel[:2] = self.pure_pursuit_vel + self.p_control_vel

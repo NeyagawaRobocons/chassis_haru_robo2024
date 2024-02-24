@@ -19,7 +19,7 @@ OdomPubSub::OdomPubSub(
 ): Node("odometry_node", name_space, options), count_(0) {
   // declare parameters: radius, length
   this->declare_parameter("radius", 0.02504);
-  this->declare_parameter("length", 0.1689);
+  this->declare_parameter("length", 0.2225);
   this->declare_parameter("output_name", "odometry_pose");
   this->declare_parameter("frame_id", "odom");
   this->get_parameter("radius", radius);

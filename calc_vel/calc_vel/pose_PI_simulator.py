@@ -40,7 +40,7 @@ class OdometryCalculator(Node):
         # 前回のコールバック時間
         self.last_time = self.get_clock().now()
         # 定期的にオドメトリー情報をpublish
-        self.dt = 0.05 # 50ms
+        self.dt = 0.1 # 0.1秒ごとにオドメトリー情報をpublish -> 10Hz
         self.timer = self.create_timer(self.dt, self.timer_callback)
         self.get_logger().info('pose_PI_simulator has been started')
         self.get_logger().info('radius: %f' % self.radius)

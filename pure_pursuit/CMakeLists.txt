@@ -11,6 +11,7 @@ find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2 REQUIRED)
@@ -68,6 +69,7 @@ install(PROGRAMS
   pure_pursuit/path_server.py
   pure_pursuit/robot_manual_controller.py
   pure_pursuit/action_client.py
+  pure_pursuit/mecha_actions_class.py # for action client
   pure_pursuit/PI_controller_class.py
   pure_pursuit/twist_to_twiststamped.py
   DESTINATION lib/${PROJECT_NAME}

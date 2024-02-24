@@ -5,8 +5,9 @@ from rclpy.node import Node
 from nav_msgs.msg import Path
 from geometry_msgs.msg import Point, Pose, PoseStamped
 from pure_pursuit.action import PathAndFeedback
-from pure_pursuit.msg import Path2DWithAngles, PointAndAngle
-from mecha_control.msg import MechaState
+from pure_pursuit.msg import PointAndAngle
+from mecha_actions_class import DaizaCmdActionClient, HinaCmdActionClient
+from std_srvs.srv import SetBool
 import pandas as pd
 import os
 from ament_index_python.packages import get_package_share_directory
@@ -15,11 +16,20 @@ class PathActionClient(Node):
     def __init__(self):
         super().__init__('path_action_client')
         self._action_client = ActionClient(self, PathAndFeedback, 'path_and_feedback')
+        self._daiza_cmd_action_client = DaizaCmdActionClient()
+        self._hina_cmd_action_client = HinaCmdActionClient()
+        self._bonbori_cmd_service = self.create_client(SetBool, '/bonbori_cmd')
         self._path_pub = self.create_publisher(Path, '/robot_path', 10)
         self.get_logger().info('Path action client has been initialized')
-        path = self.get_path()
-        indices = self.get_indices()
-        self.send_goal(path, indices)
+        self.path = self.get_path()
+        self.indices, self.daiza_commands, self.hina_commands, self.bonbori_commands = self.get_indices_and_commands()
+        self.get_logger().info('Path and indices have been loaded')
+        # self.get_logger().info(f"Path: {self.path}")
+        self.get_logger().info(f"Indices: {self.indices}")
+        self.get_logger().info(f"Daiza commands: {self.daiza_commands}")
+        self.get_logger().info(f"Hina commands: {self.hina_commands}")
+        self.get_logger().info(f"Bonbori commands: {self.bonbori_commands}")
+        self.send_goal(self.path, self.indices)
         self.get_logger().info('Goal has been sent')
 
     def send_goal(self, path: PointAndAngle, indices: list[int]) -> None:
@@ -54,8 +64,23 @@ class PathActionClient(Node):
         self.get_logger().info('Result: {0}'.format(result.final_index))
 
     def feedback_callback(self, feedback_msg):
-        feedback = feedback_msg.feedback
-        self.get_logger().info('Received feedback: {0}'.format(feedback.current_index))
+        feedback: int = feedback_msg.feedback.current_index
+        self.get_logger().info('Received feedback: {0}'.format(feedback))
+        if feedback in self.indices:
+            index = self.indices.index(feedback)
+            daiza_state: int = int(self.daiza_commands[index])
+            hina_state: int = int(self.hina_commands[index])
+            bonbori_state: bool = bool(self.bonbori_commands[index])
+            self.send_mecha_commands(daiza_state, hina_state, bonbori_state)
+
+    def send_mecha_commands(self, daiza_state: int, hina_state: int, bonbori_state: bool) -> None:
+        self.get_logger().info(f"daiza_state: {daiza_state}, hina_state: {hina_state}, bonbori_state: {bonbori_state}")
+        if daiza_state:
+            self._daiza_cmd_action_client.send_goal(daiza_state)
+        elif hina_state:
+            self._hina_cmd_action_client.send_goal(hina_state)
+        if bonbori_state:
+            self._bonbori_cmd_service(bonbori_state)
 
     def get_path(self):
         path = []
@@ -68,12 +93,18 @@ class PathActionClient(Node):
             path.append(point)
         return path
     
-    def get_indices(self):
+    def get_indices_and_commands(self):
         indices = []
+        daiza_commands = []
+        hina_commands = []
+        bonbori_commands = []
         df = pd.read_csv(os.path.join(get_package_share_directory('pure_pursuit'), 'csv', 'indices_and_commands.csv'))
         for i in range(len(df)):
             indices.append(df.at[i, 'index'])
-        return indices
+            daiza_commands.append(df.at[i, 'command1'])
+            hina_commands.append(df.at[i, 'command2'])
+            bonbori_commands.append(df.at[i, 'command3'])
+        return indices, daiza_commands, hina_commands, bonbori_commands
 
 def main(args=None):
     rclpy.init(args=args)
