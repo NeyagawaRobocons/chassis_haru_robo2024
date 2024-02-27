@@ -22,8 +22,8 @@ find_package(robot_master REQUIRED)
 
 find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/PointAndAngle.msg"
-  "msg/Path2DWithAngles.msg"
+  "msg/Pose2DWithSpeed.msg"
+  "msg/Path2DWithSpeed.msg"
   "action/PathAndFeedback.action"
 )
 ament_export_dependencies(rosidl_default_runtime)
