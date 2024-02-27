@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+import numpy as np
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float64MultiArray
@@ -42,6 +44,7 @@ class OdometryCalculator(Node):
         # 定期的にオドメトリー情報をpublish
         self.dt = 0.1 # 0.1秒ごとにオドメトリー情報をpublish -> 10Hz
         self.timer = self.create_timer(self.dt, self.timer_callback)
+        self.yaw = 0.0
         self.get_logger().info('pose_PI_simulator has been started')
         self.get_logger().info('radius: %f' % self.radius)
         self.get_logger().info('length: %f' % self.length)
@@ -62,20 +65,22 @@ class OdometryCalculator(Node):
         # 速度指令を受け取る
         omega_1, omega_2, omega_3 = msg.data
         v_x, v_y, omega = self.transform_vel_from_3wheel(self.radius, self.length, omega_1, omega_2, omega_3)
+        rotate_v_x = v_x * np.cos(self.yaw) - v_y * np.sin(self.yaw)
+        rotate_v_y = v_x * np.sin(self.yaw) + v_y * np.cos(self.yaw)
 
         # 速度指令に基づいて位置を更新
-        self.current_pose.pose.position.x += v_x * dt
-        self.current_pose.pose.position.y += v_y * dt
+        self.current_pose.pose.position.x += rotate_v_x * dt
+        self.current_pose.pose.position.y += rotate_v_y * dt
 
         # 回転角度を更新
-        _, _, yaw = euler_from_quaternion([
+        _, _, self.yaw = euler_from_quaternion([
             self.current_pose.pose.orientation.x,
             self.current_pose.pose.orientation.y,
             self.current_pose.pose.orientation.z,
             self.current_pose.pose.orientation.w
         ])
-        yaw += omega * dt
-        q = quaternion_from_euler(0, 0, yaw)
+        self.yaw += omega * dt
+        q = quaternion_from_euler(0, 0, self.yaw)
         self.current_pose.pose.orientation.x = q[0]
         self.current_pose.pose.orientation.y = q[1]
         self.current_pose.pose.orientation.z = q[2]

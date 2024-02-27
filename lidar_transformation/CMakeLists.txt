@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(localize)
+project(lidar_transformation)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -9,27 +9,21 @@ endif()
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
-ament_auto_add_executable(localize_node src/localize_node.cpp)
+ament_auto_add_executable(laser_transformation src/laser_transformation.cpp)
 
-ament_auto_add_executable(tempo_localize_node src/emcl2_posestamped.cpp)
+# ament_auto_add_executable(lidar_executor src/lidar_executor.cpp)
+# target_include_directories(lidar_executor PUBLIC
+#   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#   # $<INSTALL_INTERFACE:include>
+# )
 
-ament_auto_add_executable(timestamp_publisher_node src/mcl_pose_test.cpp)
+# ament_target_dependencies(lidar_executor ldlidar)
 
-ament_auto_add_executable(tf_to_posestamped src/tf_to_posestamped.cpp)
-
-ament_auto_add_executable(lidar_with_trans src/lidar_with_trans.cpp)
-
-install(TARGETS localize_node
+install(TARGETS laser_transformation
   DESTINATION lib/${PROJECT_NAME})
 
-install(TARGETS timestamp_publisher_node
-  DESTINATION lib/${PROJECT_NAME})
-
-install(TARGETS tf_to_posestamped
-  DESTINATION lib/${PROJECT_NAME})
-
-install(TARGETS lidar_with_trans
-  DESTINATION lib/${PROJECT_NAME})
+# install(TARGETS lidar_executor
+#   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
