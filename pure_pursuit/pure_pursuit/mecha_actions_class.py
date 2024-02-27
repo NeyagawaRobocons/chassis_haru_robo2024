@@ -3,11 +3,12 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from mecha_control.action import DaizaCmd, HinaCmd
+import time
 
 class DaizaCmdActionClient(Node):
     def __init__(self):
         super().__init__('daiza_cmd_action_client')
-        self._action_client = ActionClient(self, DaizaCmd, 'daiza_cmd_action')
+        self._action_client = ActionClient(self, DaizaCmd, 'daiza_cmd')
 
     def send_goal(self, command):
         goal_msg = DaizaCmd.Goal()
@@ -39,8 +40,8 @@ class DaizaCmdActionClient(Node):
 
 class HinaCmdActionClient(Node):
     def __init__(self):
-        super().__init__('hiragana_cmd_action_client')
-        self._action_client = ActionClient(self, HinaCmd, 'hiragana_cmd_action')
+        super().__init__('hina_cmd_action_client')
+        self._action_client = ActionClient(self, HinaCmd, 'hina_cmd')
 
     def send_goal(self, command):
         goal_msg = HinaCmd.Goal()
@@ -69,3 +70,34 @@ class HinaCmdActionClient(Node):
     def feedback_callback(self, feedback_msg):
         feedback = feedback_msg.feedback
         self.get_logger().info(f'Received feedback: {feedback.feedback}')
+
+def main() -> None:
+    rclpy.init()
+    # node = DaizaCmdActionClient()
+    node = HinaCmdActionClient()
+    commands = [
+        # DaizaCmd.Goal.READY,
+        # DaizaCmd.Goal.EXPAND_AND_UNCLAMP,
+        # DaizaCmd.Goal.CLAMP_AND_CONTRACT,
+        # DaizaCmd.Goal.EXPAND_AND_PLACE_AND_CONTRACT,
+        HinaCmd.Goal.READY,
+        HinaCmd.Goal.DOWN_AND_TAKE,
+        HinaCmd.Goal.UP_AND_CARRY,
+        HinaCmd.Goal.UP_AND_PLACE,
+        HinaCmd.Goal.LATCH_UNLOCK,
+        HinaCmd.Goal.READY,
+        HinaCmd.Goal.LATCH_UNLOCK_1,
+        HinaCmd.Goal.LATCH_UNLOCK_2,
+        HinaCmd.Goal.READY,
+    ]
+    for command in commands:
+        node.send_goal(command)
+        print(f"sending goal: {command}")
+        rclpy.spin_until_future_complete(node, node._send_goal_future)
+        print(f"result: {node._send_goal_future.result()}")
+        time.sleep(6)
+    node.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
