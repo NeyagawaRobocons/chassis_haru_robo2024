@@ -321,7 +321,6 @@ class PurePursuitNode(Node):
             path_p_gain: float
         ) -> NDArray[np.float64]:
         self.get_logger().debug(f"path_p_gain: {path_p_gain}")
-        # p_input_vel = path_p_gain * (closest_point - robot_position)
         p_input_vel = path_p_gain * (1.0 + (1.0 / self.path_p_magnification - 1.0) * angles[closest_index] / max_angle) * (closest_point[:2] - robot_pose[:2])
 
         return p_input_vel
@@ -362,15 +361,6 @@ class PurePursuitNode(Node):
             closest_index: int,
             max_speed: float
         ):
-        # path_x = path_data[:, 0]
-        # path_y = path_data[:, 1]
-        # # change lookahead_distance and speed as propotion to distance between lookahead_point and final path point
-        # current_LA_dist = lookahead_distance * (1.0 - np.cos(np.pi * dist / lookahead_distance / 2.0)) / 2.0
-        # current_speed = speed * dist / lookahead_distance / 2.0
-        # current_LA_dist = lookahead_distance * (1.0 + (1.0 / self.LA_magnification - 1.0) * np.abs(angles[closest_index]) / max_angle)
-        # target_speed = speed * (1.0 + (1.0 / self.speed_magnification - 1.0) * np.abs(angles[closest_index]) / max_angle)
-        # current_speed = self.first_order_vel(current_speed, target_speed, 1.0, 0.05, 0.5)
-
         current_speed = path_data[closest_index][3]
         current_LA_dist = lookahead_distance * (current_speed / max_speed)**2 / 2
 

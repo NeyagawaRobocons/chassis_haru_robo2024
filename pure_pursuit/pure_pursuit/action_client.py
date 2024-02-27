@@ -58,7 +58,7 @@ class PathActionClient(Node):
         path_msg = Path()
         path_msg.header.frame_id = 'map'
         path_msg.poses = [PoseStamped(pose=Pose(position=Point(x=point.x, y=point.y), orientation=self.yaw_to_quaternion(point.theta + np.pi/2))) for point in path]
-        for _ in range(3):
+        for _ in range(10):
             self._path_pub.publish(path_msg)
             time.sleep(0.1)
         self.get_logger().info('Path has been published')
