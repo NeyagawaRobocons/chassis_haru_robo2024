@@ -10,6 +10,7 @@ from mecha_actions_class import DaizaCmdActionClient, HinaCmdActionClient
 from std_srvs.srv import SetBool
 import numpy as np
 import pandas as pd
+import time
 import os
 from ament_index_python.packages import get_package_share_directory
 from tf_transformations import quaternion_from_euler
@@ -57,7 +58,9 @@ class PathActionClient(Node):
         path_msg = Path()
         path_msg.header.frame_id = 'map'
         path_msg.poses = [PoseStamped(pose=Pose(position=Point(x=point.x, y=point.y), orientation=self.yaw_to_quaternion(point.theta + np.pi/2))) for point in path]
-        self._path_pub.publish(path_msg)
+        for _ in range(3):
+            self._path_pub.publish(path_msg)
+            time.sleep(0.1)
         self.get_logger().info('Path has been published')
 
         goal_msg = PathAndFeedback.Goal()
@@ -78,17 +81,17 @@ class PathActionClient(Node):
     def goal_response_callback(self, future):
         goal_handle = future.result()
         if not goal_handle.accepted:
-            self.get_logger().info('Goal rejected :(')
+            self.get_logger().info('Path Goal rejected :(')
             return
 
-        self.get_logger().info('Goal accepted :)')
+        self.get_logger().info('Path Goal accepted :)')
 
         self._get_result_future = goal_handle.get_result_async()
         self._get_result_future.add_done_callback(self.get_result_callback)
 
     def get_result_callback(self, future):
         result = future.result().result.final_index
-        self.get_logger().info('Result: {0}'.format(result))
+        self.get_logger().info('Path Result: {0}'.format(result))
         if result in self.indices:
             index = self.indices.index(result)
             daiza_state: int = int(self.daiza_commands[index])
@@ -98,7 +101,7 @@ class PathActionClient(Node):
 
     def feedback_callback(self, feedback_msg):
         feedback: int = feedback_msg.feedback.current_index
-        self.get_logger().info('Received feedback: {0}'.format(feedback))
+        self.get_logger().info('Path Received feedback: {0}'.format(feedback))
         if feedback == self.pre_feedback: # 連続して同じfeedbackが送られてくることがあるため
             return
         if feedback in self.indices:
@@ -126,6 +129,7 @@ class PathActionClient(Node):
             point.x = df.at[i, 'x']
             point.y = df.at[i, 'y']
             point.theta = df.at[i, 'theta']
+            point.speed = df.at[i, 'speed']
             path.append(point)
         return path
     

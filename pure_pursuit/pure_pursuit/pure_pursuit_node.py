@@ -79,19 +79,20 @@ class PurePursuitNode(Node):
         # PI制御器の初期化
         self.angle_controller = PIController(self.angle_p_gain, self.angle_i_gain, max_input=1.0)
         # 準静的な変数の初期化
-        self.path_data: NDArray[np.float64] = None # np.array([[x, y, theta], [x, y, theta]])の形
+        self.path_data: NDArray[np.float64] = None # np.array([[x1, y1, theta1, speed1], [x2, y2, theta2, speed2], ...])の形
         self.indices: NDArray[np.int8] = np.array([]) # np.array([1, 2, 3])の形
         self.tangents: NDArray[np.float64] = None # np.array([[0.0, 0.0], [0.0, 0.0]])の形
-        self.angles = None # np.array([0.0, 0.0, 0.0])の形
+        self.angles = None # np.array([0.0, 0.0, 0.0, ...])の形
         self.max_angle: float = 0.0
+        self.max_speed: float = 0.0
         self.set_pose_index: int = 0
         # 動的な変数の初期化
         self.robot_pose: NDArray[np.float64] = np.array(self.initial_pose) # np.array([x, y, theta])の形
         self.previous_pose: NDArray[np.float64] = self.robot_pose # np.array([x, y, theta])の形
         self.pure_pursuit_vel: NDArray[np.float64] = np.array([0.0, 0.0]) # np.array([v_x, v_y])の形
         self.p_control_vel: NDArray[np.float64] = np.array([0.0, 0.0]) # np.array([v_x, v_y])の形
-        self.lookahead_point: NDArray[np.float64] = np.array([0.0, 0.0, 0.0])
-        self.closest_point: NDArray[np.float64] = np.array([0.0, 0.0, 0.0])
+        self.lookahead_point: NDArray[np.float64] = np.array([0.0, 0.0, 0.0, 0.0]) # np.array([x, y, theta, speed])の形
+        self.closest_point: NDArray[np.float64] = np.array([0.0, 0.0, 0.0, 0.0]) # np.array([x, y, theta, speed])の形
         self.closest_index: int = 0 # -1にすると最後の点が選ばれてしまうエラーがある
         self.current_speed = self.speed
         self.current_lookahead_distance = self.lookahead_distance
@@ -112,10 +113,11 @@ class PurePursuitNode(Node):
         self.indices = np.array(goal_handle.request.feedback_indices) # 特定の点のインデックスの受け取りと格納
         self.set_pose_index = goal_handle.request.set_pose_index # 特定の点のインデックスの受け取りと格納
         self.get_logger().info("path data has been received")
-        self.path_data = np.array([[msg.x, msg.y, msg.theta] for msg in path_msgs]) # 経路データをnumpy配列に変換
+        self.path_data = np.array([[msg.x, msg.y, msg.theta, msg.speed] for msg in path_msgs]) # 経路データをnumpy配列に変換
         self.tangents = self.compute_tangents (self.path_data) # 接ベクトルの計算と格納
         self.angles, self.max_angle = self.compute_angles (self.tangents) # 角度の計算と格納
         self.angles = gaussian_filter1d(self.angles, sigma=3) # 角度の平滑化
+        self.max_speed = np.max(self.path_data[:, 3]) # 最大速度の計算
         self.get_logger().info("path data has been initialized")
         self.get_logger().debug(f"path_data: {self.path_data}")
         self.get_logger().debug(f"indices: {self.indices}")
@@ -126,8 +128,8 @@ class PurePursuitNode(Node):
         self.goal_handle = goal_handle
         # 動的な変数の初期化
         self.pure_pursuit_vel = np.array([0.0, 0.0]) # np.array([v_x, v_y])の形
-        self.lookahead_point = np.array([0.0, 0.0, 0.0])
-        self.closest_point = np.array([0.0, 0.0, 0.0])
+        self.lookahead_point = np.array([0.0, 0.0, 0.0, 0.0]) # np.array([x, y, theta, speed])の形
+        self.closest_point = np.array([0.0, 0.0, 0.0, 0.0]) # np.array([x, y, theta, speed])の形
         self.closest_index = 0 # -1にすると最後の点が選ばれてしまうエラーがある
         self.current_speed = self.speed
         self.current_lookahead_distance = self.lookahead_distance
@@ -199,12 +201,9 @@ class PurePursuitNode(Node):
             self.path_data, 
             self.lookahead_distance, 
             self.current_lookahead_distance, 
-            self.speed, 
-            self.current_speed, 
-            self.angles, 
-            self.max_angle, 
             self.closest_point, 
-            self.closest_index)
+            self.closest_index,
+            self.max_speed)
         self.previous_pose = self.robot_pose # 位置の更新
 
     def find_lookahead_point (self,
@@ -323,7 +322,7 @@ class PurePursuitNode(Node):
         ) -> NDArray[np.float64]:
         self.get_logger().debug(f"path_p_gain: {path_p_gain}")
         # p_input_vel = path_p_gain * (closest_point - robot_position)
-        p_input_vel = path_p_gain * (1.0 + (1.0 / self.path_p_magnification - 1.0) * angles[closest_index] / max_angle) * (closest_point - robot_pose)[:2]
+        p_input_vel = path_p_gain * (1.0 + (1.0 / self.path_p_magnification - 1.0) * angles[closest_index] / max_angle) * (closest_point[:2] - robot_pose[:2])
 
         return p_input_vel
 
@@ -359,25 +358,21 @@ class PurePursuitNode(Node):
             path_data: NDArray[np.float64],
             lookahead_distance: float,
             current_LA_dist: float,
-            speed: float,
-            current_speed: float,
-            angles: NDArray[np.float64],
-            max_angle: float,
             closest_point: NDArray[np.float64],
             closest_index: int,
+            max_speed: float
         ):
-        path_x = path_data[:, 0]
-        path_y = path_data[:, 1]
-        dist = np.sqrt((path_x[-1] - closest_point[0])**2 + (path_y[-1] - closest_point[1])**2)
-        # if 最終点と現在の先行点の距離がしきい値以下なら:
-        if dist < lookahead_distance * 2.0:
-            # change lookahead_distance and speed as propotion to distance between lookahead_point and final path point
-            current_LA_dist = lookahead_distance * (1.0 - np.cos(np.pi * dist / lookahead_distance / 2.0)) / 2.0
-            current_speed = speed * dist / lookahead_distance / 2.0
-        else : # 曲率に応じて変化させる
-            current_LA_dist = lookahead_distance * (1.0 + (1.0 / self.LA_magnification - 1.0) * np.abs(angles[closest_index]) / max_angle)
-            target_speed = speed * (1.0 + (1.0 / self.speed_magnification - 1.0) * np.abs(angles[closest_index]) / max_angle)
-            current_speed = self.first_order_vel(current_speed, target_speed, 1.0, 0.05, 0.5)
+        # path_x = path_data[:, 0]
+        # path_y = path_data[:, 1]
+        # # change lookahead_distance and speed as propotion to distance between lookahead_point and final path point
+        # current_LA_dist = lookahead_distance * (1.0 - np.cos(np.pi * dist / lookahead_distance / 2.0)) / 2.0
+        # current_speed = speed * dist / lookahead_distance / 2.0
+        # current_LA_dist = lookahead_distance * (1.0 + (1.0 / self.LA_magnification - 1.0) * np.abs(angles[closest_index]) / max_angle)
+        # target_speed = speed * (1.0 + (1.0 / self.speed_magnification - 1.0) * np.abs(angles[closest_index]) / max_angle)
+        # current_speed = self.first_order_vel(current_speed, target_speed, 1.0, 0.05, 0.5)
+
+        current_speed = path_data[closest_index][3]
+        current_LA_dist = lookahead_distance * (current_speed / max_speed)**2 / 2
 
         return current_speed, current_LA_dist
 
