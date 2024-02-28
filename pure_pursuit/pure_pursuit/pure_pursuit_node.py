@@ -20,7 +20,6 @@ class PurePursuitNode(Node):
         self.pose_sub = self.create_subscription(PoseStamped, '/robot_pose', self.pose_callback, 10)
         self.action_server = ActionServer(self, PathAndFeedback, 'path_and_feedback', self.execute_callback)
         self.vel_pub = self.create_publisher(Twist, '/robot_vel', 10)
-        self.set_pose_pub = self.create_publisher(PoseWithCovarianceStamped, '/initialpose', 1)
         # 可視化用トピックの初期化
         self.pure_pursuit_vel_pub = self.create_publisher(TwistStamped, '/pure_pursuit_vel', 10)
         self.p_control_vel_pub = self.create_publisher(TwistStamped, '/p_control_vel', 10)
@@ -31,38 +30,27 @@ class PurePursuitNode(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('speed', 1.0), # [m/s]
                 ('lookahead_distance', 0.5),
                 ('path_p_gain', 0.05),
-                ('angle_p_gain', 0.5),
-                ('angle_i_gain', 0.01),
-                ('distance_threshold', 0.2), # [m]
+                ('angle_p_gain', 1.2),
+                ('angle_i_gain', 0.05),
+                ('distance_threshold', 0.03), # [m]
                 ('angle_threshold', 0.1), # [rad]
                 ('initial_pose', [0.0, 0.0, 0.0]),
-                ('LA_magnification', 3.0),
-                ('speed_magnification', 2.0),
                 ('path_p_magnification', 10.0),
-                ('dt', 0.05), # [s]
-                ('set_speed', 0.5), # [m/s]
-                ('set_distance_threshold', 0.01), # [m]
+                ('dt', 0.03), # [s]
             ])
         # パラメータの取得
-        self.speed = self.get_parameter('speed').value
-        self.lookahead_distance = self.get_parameter('lookahead_distance').value
-        self.path_p_gain = self.get_parameter('path_p_gain').value
-        self.angle_p_gain = self.get_parameter('angle_p_gain').value
-        self.angle_i_gain = self.get_parameter('angle_i_gain').value
-        self.distance_threshold = self.get_parameter('distance_threshold').value
-        self.angle_threshold = self.get_parameter('angle_threshold').value
-        self.initial_pose = self.get_parameter('initial_pose').value
-        self.LA_magnification = self.get_parameter('LA_magnification').value
-        self.speed_magnification = self.get_parameter('speed_magnification').value
-        self.path_p_magnification = self.get_parameter('path_p_magnification').value
-        self.dt = self.get_parameter('dt').value
-        self.set_speed = self.get_parameter('set_speed').value
-        self.set_distance_threshold = self.get_parameter('set_distance_threshold').value
+        self.lookahead_distance: float = self.get_parameter('lookahead_distance').value
+        self.path_p_gain: float = self.get_parameter('path_p_gain').value
+        self.angle_p_gain: float = self.get_parameter('angle_p_gain').value
+        self.angle_i_gain: float = self.get_parameter('angle_i_gain').value
+        self.distance_threshold: float = self.get_parameter('distance_threshold').value
+        self.angle_threshold: float = self.get_parameter('angle_threshold').value
+        self.initial_pose: NDArray[np.float64] = self.get_parameter('initial_pose').value
+        self.path_p_magnification: float = self.get_parameter('path_p_magnification').value
+        self.dt: float = self.get_parameter('dt').value
         self.get_logger().info("parameters have been initialized")
-        self.get_logger().info(f"speed: {self.speed}")
         self.get_logger().info(f"lookahead_distance: {self.lookahead_distance}")
         self.get_logger().info(f"path_p_gain: {self.path_p_gain}")
         self.get_logger().info(f"angle_p_gain: {self.angle_p_gain}")
@@ -70,19 +58,15 @@ class PurePursuitNode(Node):
         self.get_logger().info(f"distance_threshold: {self.distance_threshold}")
         self.get_logger().info(f"angle_threshold: {self.angle_threshold}")
         self.get_logger().info(f"initial_pose: {self.initial_pose}")
-        self.get_logger().info(f"LA_magnification: {self.LA_magnification}")
-        self.get_logger().info(f"speed_magnification: {self.speed_magnification}")
         self.get_logger().info(f"path_p_magnification: {self.path_p_magnification}")
         self.get_logger().info(f"dt: {self.dt}")
-        self.get_logger().info(f"set_speed: {self.set_speed}")
-        self.get_logger().info(f"set_distance_threshold: {self.set_distance_threshold}")
         # PI制御器の初期化
         self.angle_controller = PIController(self.angle_p_gain, self.angle_i_gain, max_input=1.0)
         # 準静的な変数の初期化
         self.path_data: NDArray[np.float64] = None # np.array([[x1, y1, theta1, speed1], [x2, y2, theta2, speed2], ...])の形
         self.indices: NDArray[np.int8] = np.array([]) # np.array([1, 2, 3])の形
         self.tangents: NDArray[np.float64] = None # np.array([[0.0, 0.0], [0.0, 0.0]])の形
-        self.angles = None # np.array([0.0, 0.0, 0.0, ...])の形
+        self.angles: NDArray[np.float64] = None # np.array([0.0, 0.0, 0.0, ...])の形
         self.max_angle: float = 0.0
         self.max_speed: float = 0.0
         self.set_pose_index: int = 0
@@ -94,9 +78,8 @@ class PurePursuitNode(Node):
         self.lookahead_point: NDArray[np.float64] = np.array([0.0, 0.0, 0.0, 0.0]) # np.array([x, y, theta, speed])の形
         self.closest_point: NDArray[np.float64] = np.array([0.0, 0.0, 0.0, 0.0]) # np.array([x, y, theta, speed])の形
         self.closest_index: int = 0 # -1にすると最後の点が選ばれてしまうエラーがある
-        self.current_speed = self.speed
+        self.current_speed: float = 0.0
         self.current_lookahead_distance = self.lookahead_distance
-        self.set_pose_vel: NDArray[np.float64] = np.array([0.0, 0.0]) # np.array([v_x, v_y])の形
         self.pre_passed_index: int = 0
         # action serverのための変数の初期化
         self.goal_handle = None # GoalHandleの初期化
@@ -131,16 +114,12 @@ class PurePursuitNode(Node):
         self.lookahead_point = np.array([0.0, 0.0, 0.0, 0.0]) # np.array([x, y, theta, speed])の形
         self.closest_point = np.array([0.0, 0.0, 0.0, 0.0]) # np.array([x, y, theta, speed])の形
         self.closest_index = 0 # -1にすると最後の点が選ばれてしまうエラーがある
-        self.current_speed = self.speed
+        self.current_speed = 0.0
         self.current_lookahead_distance = self.lookahead_distance
-        self.set_pose_vel = np.array([0.0, 0.0]) # np.array([v_x, v_y])の形
-        self.path_p_gain = self.get_parameter('path_p_gain').value
         # 新しいスレッドで条件が満たされるのを待つ
         threading.Thread(target=self.wait_for_condition).start()
         self.goal_event.wait()  # 条件が満たされるまで待つ
-        time.sleep(0.2)  # 0.1秒待つ
         self.goal_handle.succeed()
-        time.sleep(0.2)  # 0.1秒待つ
         self.get_logger().info("Goal has been reached! result: {0}".format(self.result_msg.final_index))
         time.sleep(0.2)  # 0.1秒待つ
         return self.result_msg
@@ -186,16 +165,18 @@ class PurePursuitNode(Node):
                 feedback_msg.current_index = index
                 self.goal_handle.publish_feedback(feedback_msg)
                 self.get_logger().info(f"feedback: {index}, type: {type(index)}")
-        if self.distance(self.robot_pose[:2], self.path_data[-1][:2]) < self.distance_threshold \
-            and abs(self.robot_pose[2] - self.path_data[-1][2]) < self.angle_threshold:
-            # 完了処理を行う
-            self.result_msg = PathAndFeedback.Result()
-            self.result_msg.final_index = self.closest_index
-            # self.vel_pub.publish(Twist()) # 速度のパブリッシュ(停止)
-            self.completed = True
-            self.start_pure_pursuit = False
-            self.get_logger().info("Goal has been completed")
-            time.sleep(0.2)  # 0.1秒待つ
+        if self.distance(self.robot_pose[:2], self.path_data[-1][:2]) < self.distance_threshold:
+            self.get_logger().info("x, y distance is less than threshold")
+            vel[:2] = self.path_p_gain * (self.path_data[-1][:2] - self.robot_pose[:2]) @ self.rotation_matrix(-self.robot_pose[2]).T
+            if abs(self.robot_pose[2] - self.path_data[-1][2]) < self.angle_threshold:
+                # 完了処理を行う
+                self.result_msg = PathAndFeedback.Result()
+                self.result_msg.final_index = self.closest_index
+                # self.vel_pub.publish(Twist()) # 速度のパブリッシュ(停止)
+                self.completed = True
+                self.start_pure_pursuit = False
+                self.get_logger().info("Goal has been completed")
+                time.sleep(0.2)  # 0.1秒待つ
         self.publish_vels(vel, self.pure_pursuit_vel, self.p_control_vel) # 速度のパブリッシュ
         self.current_speed, self.current_lookahead_distance = self.change_speed_lookahead_distance (
             self.path_data, 
