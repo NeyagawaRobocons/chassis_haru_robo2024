@@ -3,12 +3,14 @@ import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from nav_msgs.msg import Path
-from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion
+from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion, PoseWithCovarianceStamped
 from pure_pursuit.action import PathAndFeedback
 from pure_pursuit.msg import Pose2DWithSpeed
 from mecha_actions_class import DaizaCmdActionClient, HinaCmdActionClient
+from std_msgs.msg import Bool
 from std_srvs.srv import SetBool
 import numpy as np
+from numpy.typing import NDArray
 import pandas as pd
 import time
 import os
@@ -23,6 +25,8 @@ class PathActionClient(Node):
         self._hina_cmd_action_client = HinaCmdActionClient()
         self._bonbori_cmd_service = self.create_client(SetBool, '/set_bonbori')
         self._path_pub = self.create_publisher(Path, '/robot_path', 10)
+        self._initialpose_pub = self.create_publisher(PoseWithCovarianceStamped, '/initialpose', 10)
+        self._get_mcl_pose_pub = self.create_publisher(Bool, '/get_mcl_pose', 10)
 
         self.declare_parameters(
             namespace='',
@@ -62,6 +66,8 @@ class PathActionClient(Node):
             self._path_pub.publish(path_msg)
             time.sleep(0.1)
         self.get_logger().info('Path has been published')
+
+        self.set_pose(path=self.path, index=0)
 
         goal_msg = PathAndFeedback.Goal()
         goal_msg.path.path = path
@@ -110,6 +116,8 @@ class PathActionClient(Node):
             hina_state: int = int(self.hina_commands[index])
             bonbori_state: bool = bool(self.bonbori_commands[index])
             self.send_mecha_commands(daiza_state, hina_state, bonbori_state)
+            # if self.path[feedback].speed / self.max_speed < 0.5:
+            #     self.set_pose(path=self.path, index=feedback)
         self.pre_feedback = feedback
 
     def send_mecha_commands(self, daiza_state: int, hina_state: int, bonbori_state: bool) -> None:
@@ -132,7 +140,7 @@ class PathActionClient(Node):
             point.speed = df.at[i, 'speed']
             path.append(point)
         return path
-    
+
     def get_indices_and_commands(self):
         indices = []
         daiza_commands = []
@@ -149,6 +157,19 @@ class PathActionClient(Node):
                 set_pose_index = int(df.at[i, 'index'])
 
         return indices, daiza_commands, hina_commands, bonbori_commands, set_pose_index
+    
+    def set_pose(self, path: NDArray[np.float64], index: int) -> None:
+        initialpose_msg = PoseWithCovarianceStamped()
+        initialpose_msg.header.frame_id = 'map'
+        initialpose_msg.pose.pose = Pose(position=Point(x=path[index].x, y=path[index].y), orientation=self.yaw_to_quaternion(path[index].theta))
+        self._initialpose_pub.publish(initialpose_msg)
+
+        for _ in range(5):
+            self._get_mcl_pose_pub.publish(Bool(data=True))
+            time.sleep(0.1)
+        for _ in range(5):
+            self._get_mcl_pose_pub.publish(Bool(data=False))
+            time.sleep(0.1)
 
 def main(args=None):
     rclpy.init(args=args)

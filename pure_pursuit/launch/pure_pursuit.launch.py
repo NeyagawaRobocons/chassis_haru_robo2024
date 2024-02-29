@@ -25,11 +25,11 @@ def generate_launch_description():
             name='rp_encoder_agent_node',
         ),
         # localize_nodeの起動
-        Node(
-            package='localize',     # localize_nodeが属するパッケージ名
-            executable='tf_to_posestamped',     # localize_nodeの実行可能ファイル名
-            name='tf_to_posestamped'            # localize_nodeのノード名
-        ),
+        # Node(
+        #     package='localize',     # localize_nodeが属するパッケージ名
+        #     executable='tf_to_posestamped',     # localize_nodeの実行可能ファイル名
+        #     name='tf_to_posestamped'            # localize_nodeのノード名
+        # ),
         Node(
             package='odometry_calculator',
             executable='odometry_node',

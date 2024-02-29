@@ -17,7 +17,9 @@ ament_auto_add_executable(timestamp_publisher_node src/mcl_pose_test.cpp)
 
 ament_auto_add_executable(tf_to_posestamped src/tf_to_posestamped.cpp)
 
-ament_auto_add_executable(lidar_with_trans src/lidar_with_trans.cpp)
+# ament_auto_add_executable(lidar_with_trans src/lidar_with_trans.cpp)
+
+ament_auto_add_executable(pose_rate_change src/pose_rate_change.cpp)
 
 install(TARGETS localize_node
   DESTINATION lib/${PROJECT_NAME})
@@ -28,7 +30,10 @@ install(TARGETS timestamp_publisher_node
 install(TARGETS tf_to_posestamped
   DESTINATION lib/${PROJECT_NAME})
 
-install(TARGETS lidar_with_trans
+# install(TARGETS lidar_with_trans
+#   DESTINATION lib/${PROJECT_NAME})
+
+install(TARGETS pose_rate_change
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
