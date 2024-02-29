@@ -200,17 +200,15 @@ class PurePursuitNode(Node):
         # 最も近い点の検索
         start_index: int = pre_closest_index # 検索範囲の開始インデックス
         distances: NDArray[np.float64] = np.linalg.norm(path_data[:, :2] - robot_pose[:2], axis=1)
-        # closest_index = np.argmin(np.abs(distances[start_index:])) + start_index
-        closest_index = np.argmin(np.abs(distances))
+        diff_dist = distances[:]
+        diff_point = path_data[:, :2] - path_data[pre_closest_index, :2]
+        euclidean_dist = np.linalg.norm(diff_point, axis=1)
+        differences = diff_dist**2 + euclidean_dist**2 # LQRっぽい感じ
+        closest_index = np.argmin(differences)
         closest_index = int(closest_index)
         closest_point: NDArray[np.float64] = path_data[closest_index]
 
-        diff_dist = distances[closest_index:] - lookahead_distance
-        diff_point = path_data[closest_index:, :2] - path_data[pre_closest_index, :2]
-
-        differences = diff_dist**2 + diff_point**2 # LQRっぽい感じ
-
-        lookahead_index: NDArray[np.float64] = closest_index + np.argmin(differences)
+        lookahead_index: NDArray[np.float64] = closest_index + np.argmin(np.abs(distances[closest_index:] - lookahead_distance))
         # t = lookahead_distance - distances[lookahead_index]
         # if t > 0.0:
         #     lookahead_point: NDArray[np.float64] = path_data[lookahead_index]
