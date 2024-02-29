@@ -33,7 +33,7 @@ class PurePursuitNode(Node):
                 ('lookahead_distance', 0.5),
                 ('path_p_gain', 0.05),
                 ('angle_p_gain', 0.5),
-                ('angle_i_gain', 0.05),
+                ('angle_i_gain', 0.0),
                 ('distance_threshold', 0.03), # [m]
                 ('angle_threshold', 0.1), # [rad]
                 ('initial_pose', [0.0, 0.0, 0.0]),
