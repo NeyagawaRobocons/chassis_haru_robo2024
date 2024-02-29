@@ -5,7 +5,7 @@ from rclpy.node import Node
 from nav_msgs.msg import Path
 from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion, PoseWithCovarianceStamped
 from pure_pursuit.action import PathAndFeedback
-from pure_pursuit.msg import Pose2DWithSpeed
+from pure_pursuit.msg import Pose2DWithSpeed, Path2DWithSpeed
 from mecha_actions_class import DaizaCmdActionClient, HinaCmdActionClient
 from std_msgs.msg import Bool
 from std_srvs.srv import SetBool
@@ -58,7 +58,7 @@ class PathActionClient(Node):
 
         self.get_logger().info('Path action client has been initialized')
 
-    def send_goal(self, path: Pose2DWithSpeed, indices: list[int]) -> None:
+    def send_goal(self, path: Path2DWithSpeed, indices: list[int]) -> None:
         path_msg = Path()
         path_msg.header.frame_id = 'map'
         path_msg.poses = [PoseStamped(pose=Pose(position=Point(x=point.x, y=point.y), orientation=self.yaw_to_quaternion(point.theta + np.pi/2))) for point in path]
@@ -138,6 +138,7 @@ class PathActionClient(Node):
             point.y = df.at[i, 'y']
             point.theta = df.at[i, 'theta']
             point.speed = df.at[i, 'speed']
+            point.lookahead_distance = df.at[i, 'lookahead_distance']
             path.append(point)
         return path
 

@@ -72,6 +72,7 @@ class PurePursuitNode(Node):
         self.angles: NDArray[np.float64] = None # np.array([0.0, 0.0, 0.0, ...])の形
         self.max_angle: float = 0.0
         self.max_speed: float = 0.0
+        self.max_lookahead_distance: float = 0.0
         self.set_pose_index: int = 0
         self.pure_pursuit_timer = self.create_timer(1.0 / self.publish_rate, self.pure_pursuit_timer_callback) # タイマーの初期化
         # 動的な変数の初期化
@@ -100,12 +101,14 @@ class PurePursuitNode(Node):
         self.indices = np.array(goal_handle.request.feedback_indices) # 特定の点のインデックスの受け取りと格納
         self.set_pose_index = goal_handle.request.set_pose_index # 特定の点のインデックスの受け取りと格納
         self.get_logger().info("path data has been received")
-        self.path_data = np.array([[msg.x, msg.y, msg.theta, msg.speed] for msg in path_msgs]) # 経路データをnumpy配列に変換
+        self.path_data = np.array([[msg.x, msg.y, msg.theta, msg.speed, msg.lookahead_distance] for msg in path_msgs]) # 経路データをnumpy配列に変換
         self.previous_pose = self.path_data[0, :3]
         self.tangents = self.compute_tangents (self.path_data) # 接ベクトルの計算と格納
         self.angles, self.max_angle = self.compute_angles (self.tangents) # 角度の計算と格納
         self.angles = gaussian_filter1d(self.angles, sigma=3) # 角度の平滑化
-        self.max_speed = np.max(self.path_data[:, 3]) # 最大速度の計算
+        # self.max_speed = np.max(self.path_data[:, 3]) # 最大速度の計算
+        self.lookahead_distances = self.path_data[:, 4] # 先行距離の計算
+        # self.max_lookahead_distance = np.max(self.lookahead_distances) # 最大先行距離の計算
         self.get_logger().info("path data has been initialized")
         self.get_logger().debug(f"path_data: {self.path_data}")
         self.get_logger().debug(f"indices: {self.indices}")
@@ -190,13 +193,7 @@ class PurePursuitNode(Node):
                 self.get_logger().info("Goal has been completed")
                 time.sleep(0.2)  # 0.1秒待つ
         self.publish_vels(self.vel, self.pure_pursuit_vel, self.p_control_vel) # 速度のパブリッシュ
-        self.current_speed, self.current_lookahead_distance = self.change_speed_lookahead_distance (
-            self.path_data, 
-            self.lookahead_distance, 
-            self.current_lookahead_distance, 
-            self.closest_point, 
-            self.closest_index,
-            self.max_speed)
+        self.current_speed, self.current_lookahead_distance = self.change_speed_lookahead_distance (self.path_data, self.closest_index)
         self.previous_pose = robot_pose # 位置の更新
 
     def find_lookahead_point (self,
@@ -360,15 +357,12 @@ class PurePursuitNode(Node):
 
     def change_speed_lookahead_distance (self, 
             path_data: NDArray[np.float64],
-            lookahead_distance: float,
-            current_LA_dist: float,
-            closest_point: NDArray[np.float64],
             closest_index: int,
-            max_speed: float
         ):
         current_speed = path_data[closest_index][3]
         # current_LA_dist = lookahead_distance * (current_speed / max_speed)
-        current_LA_dist = lookahead_distance * np.sqrt(current_speed / max_speed)
+        # current_LA_dist = lookahead_distance * np.sqrt(current_speed / max_speed)
+        current_LA_dist = path_data[closest_index][4]
 
         return current_speed, current_LA_dist
 
