@@ -27,7 +27,6 @@ setup(
     entry_points={
         'console_scripts': [
             'pure_pursuit_node = pure_pursuit.pure_pursuit_node:main',
-            'pure_pursuit_PI = pure_pursuit.pure_pursuit_PI:main',
             'calc_wheel_vel_node = pure_pursuit.calc_wheel_vel:main',
             'path_view_node = pure_pursuit.robot_path_view:main', 
             'debug_vel = pure_pursuit.debug_vel:main', 

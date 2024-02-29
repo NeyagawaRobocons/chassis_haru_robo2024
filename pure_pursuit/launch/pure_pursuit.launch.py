@@ -1,44 +1,70 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
 import os
 from ament_index_python.packages import get_package_share_directory
 import numpy as np
 
 def generate_launch_description():
-    # # パラメータファイルのパスを取得
-    # param_file = os.path.join(
-    #     get_package_share_directory('calc_vel'),  # 'your_package_name'を実際のパッケージ名に置き換える
-    #     'pi_params.yaml'  # 'your_param_file.yaml'を実際のパラメータファイル名に置き換える
-    # )
 
     return LaunchDescription([
         # Node(
-        #     package='nucleo_agent',
-        #     executable='nucleo_agent_node',
-        #     name='nucleo_agent_node',
+        #     package='ldlidar',
+        #     executable='ldlidar',
+        #     name='lidar_front',
+        #     parameters=[{
+        #         'topic_name': '/lidar_front',
+        #         'frame_id': 'laser_front',
+        #         'serial_port_candidates': ['/dev/ttySerial564D005091']
+        #     }]
         # ),
+        # Node(
+        #     package='ldlidar',
+        #     executable='ldlidar',
+        #     name='lidar_back',
+        #     parameters=[{
+        #         'topic_name': '/lidar_back',
+        #         'frame_id': 'laser_back',
+        #         'serial_port_candidates': ['/dev/ttySerial564D004832']
+        #     }]
+        # ),
+        Node(
+            package='nucleo_agent',
+            executable='nucleo_agent_node',
+            name='nucleo_agent_node',
+        ),
         Node(
             package='nucleo_agent',
             executable='rp_encoder_agent_node',
             name='rp_encoder_agent_node',
         ),
-        # localize_nodeの起動
-        # Node(
-        #     package='localize',     # localize_nodeが属するパッケージ名
-        #     executable='tf_to_posestamped',     # localize_nodeの実行可能ファイル名
-        #     name='tf_to_posestamped'            # localize_nodeのノード名
-        # ),
+        Node(
+            package='mecha_control',
+            executable='cmd_seq',
+            name='cmd_seq',
+        ),
+        Node(
+            package='localize',
+            executable='pose_rate_change',
+            name='pose_rate_change',
+        ),
         Node(
             package='odometry_calculator',
             executable='odometry_node',
             name='odometry_node',
             output='log',
             parameters=[
-                {'header_frame_id': 'map'},
-                {'child_frame_id': 'base_link'},
-                {'topic_name': 'robot_pose'}
+                {'frame_id': 'odom'},
+                {'output_topic': 'odometry_pose'},
+            ]
+        ),
+        Node(
+            package='odometry_calculator',
+            executable='odometry_node',
+            name='corrected_pose_node',
+            output='log',
+            parameters=[
+                {'frame_id': 'map'},
+                {'output_topic': 'corrected_pose'},
             ]
         ),
         # robot_tf_nodeの起動
@@ -63,14 +89,14 @@ def generate_launch_description():
             package='tf2_ros',           # static tfが属するパッケージ名
             executable='static_transform_publisher',     # static tfの実行可能ファイル名
             name='static_transform_publisher2',           # static tfのノード名
-            arguments=['0.2699', '0.2699', '0', str(-np.pi / 4.0), -str(np.pi), '0', 'base_link', 'laser']
+            arguments=['0.2699', '0.2699', '0', str(np.pi / 4.0), str(-np.pi), '0', 'base_link', 'laser_front'],
         ),
-        # Node(
-        #     package='tf2_ros',
-        #     executable='static_transform_publisher',
-        #     name='static_transform_publisher3',
-        #     arguments=['-0.2699', '-0.2699', '0', str(np.pi / 4.0), '0', '0', 'base_link', 'rear/laser']
-        # ),
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='static_transform_publisher3',
+            arguments=['-0.2699', '-0.2699', '0', str(-3.0 * np.pi / 4.0), str(np.pi), '0', 'base_link', 'laser_back'],
+        ),
         Node(
             package='calc_wheel_vel',           # calc_wheel_vel_nodeが属するパッケージ名
             executable='calc_wheel_vel',     # calc_wheel_vel_nodeの実行可能ファイル名
@@ -89,26 +115,4 @@ def generate_launch_description():
             executable='twist_to_twiststamped.py',
             name='twist_to_twiststamped',
         ),
-        # Node(
-        #     package='pure_pursuit',
-        #     executable='pure_pursuit_node.py',
-        #     name='pure_pursuit_node',
-        #     parameters=[
-        #         {'speed': 0.5},
-        #         {'lookahead_distance': 0.3},
-        #         {'path_p_gain': 0.05},
-        #         {'angle_p_gain': 0.1},
-        #         {'angle_i_gain': 0.0},
-        #         {'initial_pose': [1.562, -3.112, 0.0]},
-        #     ]
-        # ),
     ])
-
-"""
-other launch file
----
-ros2 launch emcl2 emcl2.launch.py 
-ros2 launch ldlidar ldlidar.launch.py 
-ros2 launch laser_filters angular_filter_example.launch.py 
-
-"""

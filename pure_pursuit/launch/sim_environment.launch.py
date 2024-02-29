@@ -26,12 +26,12 @@ def generate_launch_description():
             executable='robot_tf_node',
             name='robot_tf_node',
         ),
-        Node(
-            package='calc_wheel_vel',
-            executable='calc_wheel_vel',
-            name='calc_wheel_vel',
-            parameters=[{'num_wheels': 3}]
-        ),
+        # Node(
+        #     package='calc_wheel_vel',
+        #     executable='calc_wheel_vel',
+        #     name='calc_wheel_vel',
+        #     parameters=[{'num_wheels': 3}]
+        # ),
         Node(
             package='rviz2',
             executable='rviz2',

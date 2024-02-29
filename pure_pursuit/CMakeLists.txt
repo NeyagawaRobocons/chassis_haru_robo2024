@@ -60,7 +60,6 @@ endif()
 
 install(PROGRAMS
   pure_pursuit/pure_pursuit_node.py
-  pure_pursuit/pure_pursuit_PI.py
   pure_pursuit/calc_wheel_vel.py
   pure_pursuit/robot_path_view.py
   pure_pursuit/debug_vel.py

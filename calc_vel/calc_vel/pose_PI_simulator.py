@@ -19,12 +19,14 @@ class OdometryCalculator(Node):
                 ('length', 0.400), # タイヤの設置半径
                 ('output_name', '/odometry_pose'), # オドメトリー情報をパブリッシュするトピック名
                 ('frame_id', 'odom'), # オドメトリー情報のフレームID
+                ('publish_rate', 100.0), # オドメトリー情報をパブリッシュする周波数(Hz)
             ]
         )
         self.radius = self.get_parameter('radius').value
         self.length = self.get_parameter('length').value
         self.output_name = self.get_parameter('output_name').value
         self.frame_id = self.get_parameter('frame_id').value
+        self.publish_rate = self.get_parameter('publish_rate').value
         # サブスクライバーの設定
         self.subscription = self.create_subscription(Float64MultiArray, '/input_vel', self.velocity_callback, 10)
         self.initial_subscription = self.create_subscription(PoseWithCovarianceStamped, '/initialpose', self.initial_callback, 10)
@@ -42,7 +44,7 @@ class OdometryCalculator(Node):
         # 前回のコールバック時間
         self.last_time = self.get_clock().now()
         # 定期的にオドメトリー情報をpublish
-        self.dt = 0.1 # 0.1秒ごとにオドメトリー情報をpublish -> 10Hz
+        self.dt = 1.0 / self.publish_rate
         self.timer = self.create_timer(self.dt, self.timer_callback)
         self.yaw = 0.0
         self.get_logger().info('pose_PI_simulator has been started')
@@ -50,6 +52,7 @@ class OdometryCalculator(Node):
         self.get_logger().info('length: %f' % self.length)
         self.get_logger().info('output_name: %s' % self.output_name)
         self.get_logger().info('frame_id: %s' % self.frame_id)
+        self.get_logger().info('publish_rate: %f' % self.publish_rate)
 
     def timer_callback(self):
         self.publisher_.publish(self.current_pose)
@@ -57,9 +60,9 @@ class OdometryCalculator(Node):
     def velocity_callback(self, msg):
         current_time = self.get_clock().now()
         dt = (current_time - self.last_time).nanoseconds / 1e9
-        if dt > 10 * self.dt:
+        if dt > 50 * self.dt:
             self.get_logger().warn('dt is too large: %f' % dt)
-            dt = self.dt
+            dt = self.dt * 50
         self.last_time = current_time
 
         # 速度指令を受け取る
@@ -93,6 +96,12 @@ class OdometryCalculator(Node):
         # 初期位置を受け取る
         self.current_pose.pose = msg.pose.pose
         self.current_pose.header = msg.header
+        self.yaw = euler_from_quaternion([
+            self.current_pose.pose.orientation.x,
+            self.current_pose.pose.orientation.y,
+            self.current_pose.pose.orientation.z,
+            self.current_pose.pose.orientation.w
+        ])[2]
         self.get_logger().info('initialpose: %s' % self.current_pose)
         # オドメトリー情報をpublish
         self.publisher_.publish(self.current_pose)

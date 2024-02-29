@@ -97,6 +97,7 @@ class PurePursuitNode(Node):
         self.set_pose_index = goal_handle.request.set_pose_index # 特定の点のインデックスの受け取りと格納
         self.get_logger().info("path data has been received")
         self.path_data = np.array([[msg.x, msg.y, msg.theta, msg.speed] for msg in path_msgs]) # 経路データをnumpy配列に変換
+        self.previous_pose = self.path_data[0, :3]
         self.tangents = self.compute_tangents (self.path_data) # 接ベクトルの計算と格納
         self.angles, self.max_angle = self.compute_angles (self.tangents) # 角度の計算と格納
         self.angles = gaussian_filter1d(self.angles, sigma=3) # 角度の平滑化
@@ -146,6 +147,9 @@ class PurePursuitNode(Node):
         # 先行点の計算
         self.lookahead_point, self.closest_point, self.closest_index = self.find_lookahead_point (
             self.robot_pose, self.path_data, self.tangents, self.closest_index, self.lookahead_point, self.current_lookahead_distance)
+        # self.get_logger().info(f"theta: {self.robot_pose[2]}, closest theta: {self.closest_point[2]}, first theta: {self.path_data[0][2]}")
+        # self.get_logger().info(f"diff of point: {self.closest_point[:2] - self.robot_pose[:2]}")
+        # self.get_logger().info(f"pure pursuit vel: {self.pure_pursuit_vel}")
         self.get_logger().debug(f"closest_point: {self.closest_point}")
         self.get_logger().debug(f"lookahead_point: {self.lookahead_point}")
         # 先行点, 最も近い点の可視化
@@ -154,6 +158,8 @@ class PurePursuitNode(Node):
         self.show_circle(self.current_lookahead_distance)
         self.lookahead_pub.publish(lookahead_pose) # 先行点パブリッシュ
         self.closest_pub.publish(closest_pose) # 最も近い点パブリッシュ
+        if lookahead_pose is None or closest_pose is None:
+            self.get_logger().warn("lookahead_pose or closest_pose is None")
         # 速度入力の計算
         self.vel = self.compute_velocity (
             self.robot_pose, self.lookahead_point, self.closest_point, self.current_speed, self.vel)
@@ -167,9 +173,11 @@ class PurePursuitNode(Node):
                 self.goal_handle.publish_feedback(feedback_msg)
                 self.get_logger().info(f"feedback: {index}, type: {type(index)}")
         if self.distance(self.robot_pose[:2], self.path_data[-1][:2]) < self.distance_threshold:
-            self.get_logger().info("x, y distance is less than threshold")
-            self.vel[:2] = self.path_p_gain * (self.path_data[-1][:2] - self.robot_pose[:2]) @ self.rotation_matrix(-self.robot_pose[2]).T
+            self.get_logger().info(f"x, y distance is less than threshold, robot angle: {self.robot_pose[2]}, goal angle: {self.path_data[-1][2]}")
+            # self.vel[:2] = self.path_p_gain * (self.path_data[-1][:2] - self.robot_pose[:2]) @ self.rotation_matrix(-self.robot_pose[2]).T
+            self.vel[:2] = np.array([0.0, 0.0])
             if abs(self.robot_pose[2] - self.path_data[-1][2]) < self.angle_threshold:
+                self.vel[2] = 0.0
                 # 完了処理を行う
                 self.result_msg = PathAndFeedback.Result()
                 self.result_msg.final_index = self.closest_index
@@ -187,6 +195,7 @@ class PurePursuitNode(Node):
             self.closest_index,
             self.max_speed)
         self.previous_pose = self.robot_pose # 位置の更新
+        # self.get_logger().info(f"current_lookahead_distance: {self.current_lookahead_distance}")
 
     def find_lookahead_point (self,
             robot_pose: NDArray[np.float64], 
@@ -196,25 +205,21 @@ class PurePursuitNode(Node):
             pre_lookahead_point: NDArray[np.float64],
             lookahead_distance: float,
         ) -> tuple[NDArray[np.float64], NDArray[np.float64], int]:
-        closest_index: int = pre_closest_index
+        closest_index: int = 0
+        serch_range = 10
+        start_index = max(5, pre_closest_index - serch_range + 5)
+        end_index = min(len(path_data), pre_closest_index + serch_range)
         # 最も近い点の検索
-        start_index: int = pre_closest_index # 検索範囲の開始インデックス
         distances: NDArray[np.float64] = np.linalg.norm(path_data[:, :2] - robot_pose[:2], axis=1)
-        diff_dist = distances[:]
-        diff_point = path_data[:, :2] - path_data[pre_closest_index, :2]
+        diff_point = path_data[start_index:end_index, :2] - path_data[pre_closest_index, :2]
         euclidean_dist = np.linalg.norm(diff_point, axis=1)
-        differences = diff_dist**2 + euclidean_dist**2 # LQRっぽい感じ
-        closest_index = np.argmin(differences)
+        
+        differences = distances[start_index:end_index]**2 + 0.1 * euclidean_dist**2 # LQRっぽい感じ
+        closest_index = np.argmin(differences) + start_index
         closest_index = int(closest_index)
         closest_point: NDArray[np.float64] = path_data[closest_index]
 
         lookahead_index: NDArray[np.float64] = closest_index + np.argmin(np.abs(distances[closest_index:] - lookahead_distance))
-        # t = lookahead_distance - distances[lookahead_index]
-        # if t > 0.0:
-        #     lookahead_point: NDArray[np.float64] = path_data[lookahead_index]
-        #     lookahead_point[:2] += t * tangents[lookahead_index] / np.linalg.norm(tangents[lookahead_index]) # 先行点を補間
-        # else:
-        #     lookahead_point = pre_lookahead_point
         lookahead_point: NDArray[np.float64] = path_data[lookahead_index]
 
         return lookahead_point, closest_point, closest_index
@@ -229,11 +234,9 @@ class PurePursuitNode(Node):
         self.pure_pursuit_vel = self.rotate_vel(
             self.calc_pure_pursuit_vel(robot_pose, lookahead_point, speed), 
             -robot_pose[2])
-        # + self.angles[self.closest_index])
         self.p_control_vel = self.rotate_vel(
             self.compute_path_P_input(robot_pose, closest_point, self.closest_index, self.angles, self.max_angle, self.path_p_gain),
             -robot_pose[2])
-        # + self.angles[self.closest_index])
         omega: float = self.compute_angle_PI (closest_point, robot_pose, self.dt)
         vel: NDArray[np.float64] = np.array([0.0, 0.0, 0.0])
         vel[:2] = self.pure_pursuit_vel + self.p_control_vel
@@ -352,7 +355,8 @@ class PurePursuitNode(Node):
             max_speed: float
         ):
         current_speed = path_data[closest_index][3]
-        current_LA_dist = lookahead_distance * (current_speed / max_speed)**2 / 2
+        # current_LA_dist = lookahead_distance * (current_speed / max_speed)
+        current_LA_dist = lookahead_distance * np.sqrt(current_speed / max_speed)
 
         return current_speed, current_LA_dist
 
@@ -389,15 +393,12 @@ class PurePursuitNode(Node):
         
         return yaw
 
-    def yaw_to_quaternion(self, yaw_degrees: float) -> Quaternion:
-        # Yaw角度をラジアンに変換
-        yaw_radians = np.radians(yaw_degrees)
-        
+    def yaw_to_quaternion(self, yaw: float) -> Quaternion:        
         # 四元数を計算
         qx = 0.0
         qy = 0.0
-        qz = np.sin(yaw_radians / 2.0)
-        qw = np.cos(yaw_radians / 2.0)
+        qz = np.sin(yaw / 2.0)
+        qw = np.cos(yaw / 2.0)
         
         return Quaternion(x=qx, y=qy, z=qz, w=qw)
 
