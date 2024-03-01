@@ -17,7 +17,7 @@ class PurePursuitNode(Node):
     def __init__(self) -> None:
         super().__init__('pure_pursuit_node')
         # トピック, アクションの初期化
-        self.pose_sub = self.create_subscription(PoseStamped, '/robot_pose', self.pose_callback, 10)
+        self.pose_sub = self.create_subscription(PoseStamped, '/corrected_output_topic', self.pose_callback, 10)
         self.action_server = ActionServer(self, PathAndFeedback, 'path_and_feedback', self.execute_callback)
         self.vel_pub = self.create_publisher(Twist, '/robot_vel', 10)
         # 可視化用トピックの初期化
@@ -268,8 +268,8 @@ class PurePursuitNode(Node):
         omega: float = self.compute_angle_PI (closest_point, robot_pose, self.dt)
         vel: NDArray[np.float64] = np.array([0.0, 0.0, 0.0])
         vel[:2] = self.pure_pursuit_vel + self.p_control_vel
-        vel[0] = self.first_order_vel(previous_vel[0], vel[0], 1.0, self.dt, 0.1)
-        vel[1] = self.first_order_vel(previous_vel[1], vel[1], 1.0, self.dt, 0.1)
+        # vel[0] = self.first_order_vel(previous_vel[0], vel[0], 1.0, self.dt, 0.1)
+        # vel[1] = self.first_order_vel(previous_vel[1], vel[1], 1.0, self.dt, 0.1)
         vel[2] = omega
 
         return vel
@@ -285,7 +285,7 @@ class PurePursuitNode(Node):
     def vel_to_TwistStamped (self, vel: NDArray[np.float64]) -> TwistStamped:
         vel_msg = TwistStamped()
         vel_msg.header.stamp = self.get_clock().now().to_msg()
-        vel_msg.header.frame_id = "base_link"
+        vel_msg.header.frame_id = "corrected_base_link"
         vel_msg.twist.linear.x = vel[0]
         vel_msg.twist.linear.y = vel[1]
         # vel_msg.twist.angular.z = vel[2] # omega (not used)
