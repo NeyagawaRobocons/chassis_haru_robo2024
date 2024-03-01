@@ -26,7 +26,7 @@ class PoseSubscriber(Node):
         transform = TransformStamped()
 
         # ヘッダの設定
-        transform.header.stamp = self.get_clock().now().to_msg()
+        transform.header.stamp = msg.header.stamp
         transform.header.frame_id = self.get_parameter('header_frame_id').get_parameter_value().string_value
         transform.child_frame_id = self.get_parameter('child_frame_id').get_parameter_value().string_value
 

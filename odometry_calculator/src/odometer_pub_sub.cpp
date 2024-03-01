@@ -75,7 +75,7 @@ void OdomPubSub::_topic_callback(const nucleo_agent::msg::OdometerData::SharedPt
   tf2::Quaternion q;
   q.setRPY(0, 0, _pose.theta);  // ロール、ピッチは0、ヨーを設定
   // Headerの設定
-  msg_pose->header.stamp = rclcpp::Clock().now();
+  msg_pose->header.stamp = msg->header.stamp;
   msg_pose->header.frame_id = "odom";  // フレームIDの設定
   msg_pose->pose.position.x = _pose.x;
   msg_pose->pose.position.y = _pose.y;
