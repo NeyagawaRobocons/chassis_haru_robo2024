@@ -60,17 +60,11 @@ endif()
 
 install(PROGRAMS
   pure_pursuit/pure_pursuit_node.py
-  pure_pursuit/calc_wheel_vel.py
-  pure_pursuit/robot_path_view.py
-  pure_pursuit/debug_vel.py
-  pure_pursuit/param_controller.py
-  pure_pursuit/mecha_state_publisher.py
-  pure_pursuit/path_server.py
-  pure_pursuit/robot_manual_controller.py
   pure_pursuit/action_client.py
   pure_pursuit/mecha_actions_class.py # for action client
   pure_pursuit/PI_controller_class.py
   pure_pursuit/twist_to_twiststamped.py
+  pure_pursuit/robot_master_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

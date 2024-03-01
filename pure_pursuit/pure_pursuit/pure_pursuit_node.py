@@ -8,7 +8,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionServer
 from rclpy.executors import MultiThreadedExecutor
-from geometry_msgs.msg import Quaternion, PoseStamped, Twist, TwistStamped, PoseWithCovarianceStamped
+from geometry_msgs.msg import Quaternion, PoseStamped, Twist, TwistStamped
 from visualization_msgs.msg import Marker
 from pure_pursuit.action import PathAndFeedback
 from PI_controller_class import PIController
@@ -27,7 +27,7 @@ class PurePursuitNode(Node):
                 # ('path_p_gain', 0.10),
                 # ('angle_p_gain', 0.5),
                 # ('angle_i_gain', 0.0),
-                ('distance_threshold', 0.2), # [m]
+                ('distance_threshold', 0.1), # [m]
                 # ('angle_threshold', 0.1), # [rad]
                 ('initial_pose', [0.0, 0.0, 0.0]),
                 # ('path_p_magnification', 10.0),
@@ -187,7 +187,7 @@ class PurePursuitNode(Node):
         self.get_logger().debug(f"x: {robot_pose[0]}, y: {robot_pose[1]}, theta: {robot_pose[2]}")
         # 先行点の計算
         self.lookahead_point, self.closest_point, self.closest_index = self.find_lookahead_point (
-            robot_pose, self.path_data, self.tangents, self.closest_index, self.lookahead_point, self.current_lookahead_distance)
+            robot_pose, self.path_data, self.closest_index, self.current_lookahead_distance)
         self.get_logger().debug(f"closest_point: {self.closest_point}")
         self.get_logger().debug(f"lookahead_point: {self.lookahead_point}")
         # 先行点, 最も近い点の可視化
@@ -200,7 +200,7 @@ class PurePursuitNode(Node):
             self.get_logger().warn("lookahead_pose or closest_pose is None")
         # 速度入力の計算
         self.vel = self.compute_velocity (
-            self.path_data, robot_pose, self.lookahead_point, self.closest_point, self.current_speed, self.vel)
+            self.path_data, robot_pose, self.lookahead_point, self.closest_point, self.current_speed)
         # 完了処理
         for index in self.indices:
             index = int(index) # np.int32をintに変換
@@ -233,9 +233,7 @@ class PurePursuitNode(Node):
     def find_lookahead_point (self,
             robot_pose: NDArray[np.float64], 
             path_data: NDArray[np.float64], 
-            tangents: NDArray[np.float64],
             pre_closest_index: int,
-            pre_lookahead_point: NDArray[np.float64],
             lookahead_distance: float,
         ) -> tuple[NDArray[np.float64], NDArray[np.float64], int]:
         closest_index: int = 0
@@ -282,7 +280,6 @@ class PurePursuitNode(Node):
             lookahead_point: NDArray[np.float64],
             closest_point: NDArray[np.float64],
             speed: float, 
-            previous_vel: NDArray[np.float64] = np.array([0.0, 0.0, 0.0]),
         ) -> NDArray[np.float64]:
         self.pure_pursuit_vel = self.rotate_vel(
             self.calc_pure_pursuit_vel(robot_pose, lookahead_point, speed), 
@@ -295,15 +292,9 @@ class PurePursuitNode(Node):
         self.angle_controller.set_gains(self.angle_p_gains[self.closest_index], self.angle_i_gains[self.closest_index])
         omega: float = self.compute_angle_PI (closest_point, robot_pose, self.dt)
         vel: NDArray[np.float64] = np.array([0.0, 0.0, 0.0])
-<<<<<<< HEAD
         vel[:2] = self.pure_pursuit_vel + self.pi_control_vel
-        vel[0] = self.first_order_vel(previous_vel[0], vel[0], 1.0, self.dt, 0.1)
-        vel[1] = self.first_order_vel(previous_vel[1], vel[1], 1.0, self.dt, 0.1)
-=======
-        vel[:2] = self.pure_pursuit_vel + self.p_control_vel
         # vel[0] = self.first_order_vel(previous_vel[0], vel[0], 1.0, self.dt, 0.1)
         # vel[1] = self.first_order_vel(previous_vel[1], vel[1], 1.0, self.dt, 0.1)
->>>>>>> 4b7f7bf2c0abfa0c1134bb203daa4a0db76925db
         vel[2] = omega
 
         return vel

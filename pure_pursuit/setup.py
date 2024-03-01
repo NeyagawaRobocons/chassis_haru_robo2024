@@ -27,16 +27,10 @@ setup(
     entry_points={
         'console_scripts': [
             'pure_pursuit_node = pure_pursuit.pure_pursuit_node:main',
-            'calc_wheel_vel_node = pure_pursuit.calc_wheel_vel:main',
-            'path_view_node = pure_pursuit.robot_path_view:main', 
-            'debug_vel = pure_pursuit.debug_vel:main', 
-            'param_controller = pure_pursuit.param_controller:main', 
-            'mecha_state_publisher = pure_pursuit.mecha_state_publisher:main',
-            'path_server = pure_pursuit.path_server:main',
-            'robot_manual_controller = pure_pursuit.robot_manual_controller:main',
             'action_client = pure_pursuit.action_client:main',
             'twist_to_twist_stamped = pure_pursuit.twist_to_twist_stamped:main',
             'action_test = pure_pursuit.mecha_actions_class:main',
+            'robot_master_node = pure_pursuit.robot_master_node:main',
         ],
     },
 )

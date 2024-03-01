@@ -9,8 +9,10 @@ class DaizaCmdActionClient(Node):
     def __init__(self):
         super().__init__('daiza_cmd_action_client')
         self._action_client = ActionClient(self, DaizaCmd, 'daiza_cmd')
+        self.is_get_result = False
 
     def send_goal(self, command):
+        self.is_get_result = False
         goal_msg = DaizaCmd.Goal()
         goal_msg.command = command
 
@@ -33,6 +35,7 @@ class DaizaCmdActionClient(Node):
     def get_result_callback(self, future):
         result = future.result().result
         self.get_logger().info(f'Result: {result.result}')
+        self.is_get_result = True
 
     def feedback_callback(self, feedback_msg):
         feedback = feedback_msg.feedback
@@ -42,8 +45,10 @@ class HinaCmdActionClient(Node):
     def __init__(self):
         super().__init__('hina_cmd_action_client')
         self._action_client = ActionClient(self, HinaCmd, 'hina_cmd')
+        self.is_get_result = False
 
     def send_goal(self, command):
+        self.is_get_result = False
         goal_msg = HinaCmd.Goal()
         goal_msg.command = command
 
@@ -66,6 +71,7 @@ class HinaCmdActionClient(Node):
     def get_result_callback(self, future):
         result = future.result().result
         self.get_logger().info(f'Result: {result.result}')
+        self.is_get_result = True
 
     def feedback_callback(self, feedback_msg):
         feedback = feedback_msg.feedback
