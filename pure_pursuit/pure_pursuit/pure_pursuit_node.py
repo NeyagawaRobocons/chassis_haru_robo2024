@@ -16,6 +16,19 @@ from PI_controller_class import PIController
 class PurePursuitNode(Node):
     def __init__(self) -> None:
         super().__init__('pure_pursuit_node')
+<<<<<<< HEAD
+=======
+        # トピック, アクションの初期化
+        self.pose_sub = self.create_subscription(PoseStamped, '/corrected_output_topic', self.pose_callback, 10)
+        self.action_server = ActionServer(self, PathAndFeedback, 'path_and_feedback', self.execute_callback)
+        self.vel_pub = self.create_publisher(Twist, '/robot_vel', 10)
+        # 可視化用トピックの初期化
+        self.pure_pursuit_vel_pub = self.create_publisher(TwistStamped, '/pure_pursuit_vel', 10)
+        self.p_control_vel_pub = self.create_publisher(TwistStamped, '/p_control_vel', 10)
+        self.lookahead_pub = self.create_publisher(PoseStamped, 'lookahead_pose', 10)
+        self.closest_pub = self.create_publisher(PoseStamped, 'closest_pose', 10)
+        self.circle_pub = self.create_publisher(Marker, 'circle_marker', 10)
+>>>>>>> 4b7f7bf2c0abfa0c1134bb203daa4a0db76925db
         # パラメータの宣言
         self.declare_parameters(
             namespace='',
@@ -295,9 +308,15 @@ class PurePursuitNode(Node):
         self.angle_controller.set_gains(self.angle_p_gains[self.closest_index], self.angle_i_gains[self.closest_index])
         omega: float = self.compute_angle_PI (closest_point, robot_pose, self.dt)
         vel: NDArray[np.float64] = np.array([0.0, 0.0, 0.0])
+<<<<<<< HEAD
         vel[:2] = self.pure_pursuit_vel + self.pi_control_vel
         vel[0] = self.first_order_vel(previous_vel[0], vel[0], 1.0, self.dt, 0.1)
         vel[1] = self.first_order_vel(previous_vel[1], vel[1], 1.0, self.dt, 0.1)
+=======
+        vel[:2] = self.pure_pursuit_vel + self.p_control_vel
+        # vel[0] = self.first_order_vel(previous_vel[0], vel[0], 1.0, self.dt, 0.1)
+        # vel[1] = self.first_order_vel(previous_vel[1], vel[1], 1.0, self.dt, 0.1)
+>>>>>>> 4b7f7bf2c0abfa0c1134bb203daa4a0db76925db
         vel[2] = omega
 
         return vel
@@ -313,7 +332,7 @@ class PurePursuitNode(Node):
     def vel_to_TwistStamped (self, vel: NDArray[np.float64]) -> TwistStamped:
         vel_msg = TwistStamped()
         vel_msg.header.stamp = self.get_clock().now().to_msg()
-        vel_msg.header.frame_id = "base_link"
+        vel_msg.header.frame_id = "corrected_base_link"
         vel_msg.twist.linear.x = vel[0]
         vel_msg.twist.linear.y = vel[1]
         # vel_msg.twist.angular.z = vel[2] # omega (not used)
