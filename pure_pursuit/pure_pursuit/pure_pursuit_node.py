@@ -205,11 +205,20 @@ class PurePursuitNode(Node):
             lookahead_distance: float,
         ) -> tuple[NDArray[np.float64], NDArray[np.float64], int]:
         closest_index: int = 0
-        serch_range = 100
-        start_index = max(0, pre_closest_index - serch_range)
-        end_index = min(len(path_data), pre_closest_index + serch_range)
+        radius = 0.5 # [m]
+        # serch_range = 100
+        # start_index = max(0, pre_closest_index - serch_range)
+        # end_index = min(len(path_data), pre_closest_index + serch_range)
         # 最も近い点の検索
         distances: NDArray[np.float64] = np.linalg.norm(path_data[:, :2] - robot_pose[:2], axis=1)
+        self.get_logger().info(f"distances head: {distances[:5]}")
+        self.get_logger().info(f"path data head: {path_data[:5]}")
+        serch_indices = np.where(distances < radius)
+        start_index = serch_indices[0][0] if len(serch_indices[0]) > 0 else 0
+        end_index = serch_indices[0][-1] if len(serch_indices[0]) > 0 else len(path_data)
+        self.get_logger().info(f"robot pose: {robot_pose[:2]}")
+        self.get_logger().info(f"serch_indices: {serch_indices}")
+        self.get_logger().info(f"start_index: {start_index}, end_index: {end_index}")
         diff_point = path_data[start_index:end_index, :2] - path_data[pre_closest_index, :2]
         euclidean_dist = np.linalg.norm(diff_point, axis=1)
         differences = distances[start_index:end_index]**2

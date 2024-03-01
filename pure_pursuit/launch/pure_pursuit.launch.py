@@ -27,21 +27,21 @@ def generate_launch_description():
         #         'serial_port_candidates': ['/dev/ttySerial564D004832']
         #     }]
         # ),
-        Node(
-            package='nucleo_agent',
-            executable='nucleo_agent_node',
-            name='nucleo_agent_node',
-        ),
-        Node(
-            package='nucleo_agent',
-            executable='rp_encoder_agent_node',
-            name='rp_encoder_agent_node',
-        ),
-        Node(
-            package='mecha_control',
-            executable='cmd_seq',
-            name='cmd_seq',
-        ),
+        # Node(
+        #     package='nucleo_agent',
+        #     executable='nucleo_agent_node',
+        #     name='nucleo_agent_node',
+        # ),
+        # Node(
+        #     package='nucleo_agent',
+        #     executable='rp_encoder_agent_node',
+        #     name='rp_encoder_agent_node',
+        # ),
+        # Node(
+        #     package='mecha_control',
+        #     executable='cmd_seq',
+        #     name='cmd_seq',
+        # ),
         Node(
             package='localize',
             executable='pose_rate_change',
@@ -65,37 +65,8 @@ def generate_launch_description():
             parameters=[
                 {'frame_id': 'map'},
                 {'output_topic': 'corrected_pose'},
+                {'initialpose_topic': 'mcl_pose'},
             ]
-        ),
-        # robot_tf_nodeの起動
-        Node(
-            package='calc_vel',           # robot_tf_nodeが属するパッケージ名
-            executable='robot_tf_node',     # robot_tf_nodeの実行可能ファイル名
-            name='robot_tf_node',           # robot_tf_nodeのノード名
-            parameters=[
-                {'header_frame_id': 'odom'},
-                {'child_frame_id': 'base_footprint'},
-                {'topic_name': 'odometry_pose'}
-            ]
-        ),
-        # static tfの起動
-        Node(
-            package='tf2_ros',           # static tfが属するパッケージ名
-            executable='static_transform_publisher',     # static tfの実行可能ファイル名
-            name='static_transform_publisher1',           # static tfのノード名
-            arguments=['0', '0', '0', '0', '0', '0', 'base_footprint', 'base_link']
-        ),
-        Node(
-            package='tf2_ros',           # static tfが属するパッケージ名
-            executable='static_transform_publisher',     # static tfの実行可能ファイル名
-            name='static_transform_publisher2',           # static tfのノード名
-            arguments=['0.2699', '0.2699', '0', str(np.pi / 4.0), str(-np.pi), '0', 'base_link', 'laser_front'],
-        ),
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='static_transform_publisher3',
-            arguments=['-0.2699', '-0.2699', '0', str(-3.0 * np.pi / 4.0), str(np.pi), '0', 'base_link', 'laser_back'],
         ),
         Node(
             package='calc_wheel_vel',           # calc_wheel_vel_nodeが属するパッケージ名

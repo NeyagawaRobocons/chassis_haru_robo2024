@@ -10,6 +10,8 @@ Panels:
         - /Path1
         - /LaserScan1
         - /LaserScan2
+        - /Axes3
+        - /Axes4
       Splitter Ratio: 0.5
     Tree Height: 719
   - Class: rviz_common/Selection
@@ -29,7 +31,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: LaserScan
+    SyncSource: ""
 Visualization Manager:
   Class: ""
   Displays:
@@ -324,6 +326,20 @@ Visualization Manager:
         Value: /scan_front
       Use Fixed Frame: true
       Use rainbow: true
+      Value: true
+    - Class: rviz_default_plugins/Axes
+      Enabled: true
+      Length: 1
+      Name: Axes
+      Radius: 0.10000000149011612
+      Reference Frame: laser_front
+      Value: true
+    - Class: rviz_default_plugins/Axes
+      Enabled: true
+      Length: 1
+      Name: Axes
+      Radius: 0.10000000149011612
+      Reference Frame: laser_back
       Value: true
   Enabled: true
   Global Options:
