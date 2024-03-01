@@ -16,53 +16,62 @@ from PI_controller_class import PIController
 class PurePursuitNode(Node):
     def __init__(self) -> None:
         super().__init__('pure_pursuit_node')
-        # トピック, アクションの初期化
-        self.pose_sub = self.create_subscription(PoseStamped, '/robot_pose', self.pose_callback, 10)
-        self.action_server = ActionServer(self, PathAndFeedback, 'path_and_feedback', self.execute_callback)
-        self.vel_pub = self.create_publisher(Twist, '/robot_vel', 10)
-        # 可視化用トピックの初期化
-        self.pure_pursuit_vel_pub = self.create_publisher(TwistStamped, '/pure_pursuit_vel', 10)
-        self.p_control_vel_pub = self.create_publisher(TwistStamped, '/p_control_vel', 10)
-        self.lookahead_pub = self.create_publisher(PoseStamped, 'lookahead_pose', 10)
-        self.closest_pub = self.create_publisher(PoseStamped, 'closest_pose', 10)
-        self.circle_pub = self.create_publisher(Marker, 'circle_marker', 10)
         # パラメータの宣言
         self.declare_parameters(
             namespace='',
             parameters=[
+                ('pose_topic', '/robot_pose'),
+                ('input_action', 'path_and_feedback'),
+                ('output_twist_topic', '/robot_vel'),
                 ('lookahead_distance', 0.5),
-                ('path_p_gain', 0.10),
+                # ('path_p_gain', 0.10),
                 # ('angle_p_gain', 0.5),
                 # ('angle_i_gain', 0.0),
                 ('distance_threshold', 0.2), # [m]
                 # ('angle_threshold', 0.1), # [rad]
                 ('initial_pose', [0.0, 0.0, 0.0]),
-                ('path_p_magnification', 10.0),
+                # ('path_p_magnification', 10.0),
                 ('dt', 0.03), # [s]
                 ('publish_rate', 20.0), # [Hz]
             ])
         # パラメータの取得
+        pose_topic = self.get_parameter('pose_topic').value
+        input_action = self.get_parameter('input_action').value
+        output_twist_topic = self.get_parameter('output_twist_topic').value
         self.lookahead_distance: float = self.get_parameter('lookahead_distance').value
-        self.path_p_gain: float = self.get_parameter('path_p_gain').value
+        # self.path_p_gain: float = self.get_parameter('path_p_gain').value
         # self.angle_p_gain: float = self.get_parameter('angle_p_gain').value
         # self.angle_i_gain: float = self.get_parameter('angle_i_gain').value
         self.distance_threshold: float = self.get_parameter('distance_threshold').value
         # self.angle_threshold: float = self.get_parameter('angle_threshold').value
         self.initial_pose: NDArray[np.float64] = self.get_parameter('initial_pose').value
-        self.path_p_magnification: float = self.get_parameter('path_p_magnification').value
+        # self.path_p_magnification: float = self.get_parameter('path_p_magnification').value
         self.dt: float = self.get_parameter('dt').value
         self.publish_rate: float = self.get_parameter('publish_rate').value
         self.get_logger().info("parameters have been initialized")
+        self.get_logger().info(f"pose_topic: {pose_topic}")
+        self.get_logger().info(f"input_action: {input_action}")
+        self.get_logger().info(f"output_twist_topic: {output_twist_topic}")
         self.get_logger().info(f"lookahead_distance: {self.lookahead_distance}")
-        self.get_logger().info(f"path_p_gain: {self.path_p_gain}")
+        # self.get_logger().info(f"path_p_gain: {self.path_p_gain}")
         # self.get_logger().info(f"angle_p_gain: {self.angle_p_gain}")
         # self.get_logger().info(f"angle_i_gain: {self.angle_i_gain}")
         self.get_logger().info(f"distance_threshold: {self.distance_threshold}")
         # self.get_logger().info(f"angle_threshold: {self.angle_threshold}")
         self.get_logger().info(f"initial_pose: {self.initial_pose}")
-        self.get_logger().info(f"path_p_magnification: {self.path_p_magnification}")
+        # self.get_logger().info(f"path_p_magnification: {self.path_p_magnification}")
         self.get_logger().info(f"dt: {self.dt}")
         self.get_logger().info(f"publish_rate: {self.publish_rate}")
+        # トピック, アクションの初期化
+        self.pose_sub = self.create_subscription(PoseStamped, pose_topic, self.pose_callback, 10)
+        self.action_server = ActionServer(self, PathAndFeedback, input_action, self.execute_callback)
+        self.vel_pub = self.create_publisher(Twist, output_twist_topic, 10)
+        # 可視化用トピックの初期化
+        self.pure_pursuit_vel_pub = self.create_publisher(TwistStamped, '/pure_pursuit_vel', 10)
+        self.pi_control_vel_pub = self.create_publisher(TwistStamped, '/pi_control_vel', 10)
+        self.lookahead_pub = self.create_publisher(PoseStamped, 'lookahead_pose', 10)
+        self.closest_pub = self.create_publisher(PoseStamped, 'closest_pose', 10)
+        self.circle_pub = self.create_publisher(Marker, 'circle_marker', 10)
         # 準静的な変数の初期化
         self.path_data: NDArray[np.float64] = None # np.array([[x1, y1, theta1, speed1], [x2, y2, theta2, speed2], ...])の形
         self.indices: NDArray[np.int8] = np.array([]) # np.array([1, 2, 3])の形
@@ -82,7 +91,7 @@ class PurePursuitNode(Node):
         self.robot_pose: NDArray[np.float64] = np.array(self.initial_pose) # np.array([x, y, theta])の形
         self.previous_pose: NDArray[np.float64] = self.robot_pose # np.array([x, y, theta])の形
         self.pure_pursuit_vel: NDArray[np.float64] = np.array([0.0, 0.0]) # np.array([v_x, v_y])の形
-        self.p_control_vel: NDArray[np.float64] = np.array([0.0, 0.0]) # np.array([v_x, v_y])の形
+        self.pi_control_vel: NDArray[np.float64] = np.array([0.0, 0.0]) # np.array([v_x, v_y])の形
         self.lookahead_point: NDArray[np.float64] = np.array([0.0, 0.0, 0.0, 0.0]) # np.array([x, y, theta, speed])の形
         self.closest_point: NDArray[np.float64] = np.array([0.0, 0.0, 0.0, 0.0]) # np.array([x, y, theta, speed])の形
         self.closest_index: int = 0 # -1にすると最後の点が選ばれてしまうエラーがある
@@ -90,6 +99,8 @@ class PurePursuitNode(Node):
         self.current_lookahead_distance = self.lookahead_distance
         self.pre_passed_index: int = 0
         self.processed_indices = [] # 処理済みのインデックスのリスト
+        self.error: NDArray[np.float64] = np.array([0.0, 0.0]) # np.array([x_error, y_error])の形
+        self.raw_pi_input_vel: NDArray[np.float64] = np.array([0.0, 0.0]) # np.array([v_x, v_y])の形
         # action serverのための変数の初期化
         self.goal_handle = None # GoalHandleの初期化
         self.result_msg = None # Resultの初期化
@@ -106,7 +117,16 @@ class PurePursuitNode(Node):
         self.set_pose_index = goal_handle.request.set_pose_index # 特定の点のインデックスの受け取りと格納
         self.get_logger().info("path data has been received")
         self.path_data = np.array([[
-                msg.x, msg.y, msg.theta, msg.speed, msg.lookahead_distance, msg.angle_p_gain, msg.angle_i_gain, msg.angle_threshold
+                msg.x, 
+                msg.y, 
+                msg.theta, 
+                msg.speed, 
+                msg.lookahead_distance, 
+                msg.angle_p_gain, 
+                msg.angle_i_gain, 
+                msg.angle_threshold,
+                msg.path_p_gain,
+                msg.path_i_gain,
             ] for msg in path_msgs]) # 経路データをnumpy配列に変換
         self.previous_pose = self.path_data[0, :3]
         self.tangents = self.compute_tangents (self.path_data) # 接ベクトルの計算と格納
@@ -132,6 +152,11 @@ class PurePursuitNode(Node):
         self.current_speed = 0.0
         self.current_lookahead_distance = self.lookahead_distance
         self.vel: NDArray[np.float64] = np.array([0.0, 0.0, 0.0]) # np.array([v_x, v_y, omega])の形
+        self.pre_passed_index = 0
+        self.processed_indices = [] # 処理済みのインデックスのリスト
+        self.error = np.array([0.0, 0.0]) # np.array([x_error, y_error])の形
+        self.raw_pi_input_vel = np.array([0.0, 0.0]) # np.array([v_x, v_y])の形
+        self.get_logger().info("pure pursuit has been started")
         # 新しいスレッドで条件が満たされるのを待つ
         threading.Thread(target=self.wait_for_condition).start()
         self.goal_event.wait()  # 条件が満たされるまで待つ
@@ -175,7 +200,7 @@ class PurePursuitNode(Node):
             self.get_logger().warn("lookahead_pose or closest_pose is None")
         # 速度入力の計算
         self.vel = self.compute_velocity (
-            robot_pose, self.lookahead_point, self.closest_point, self.current_speed, self.vel)
+            self.path_data, robot_pose, self.lookahead_point, self.closest_point, self.current_speed, self.vel)
         # 完了処理
         for index in self.indices:
             index = int(index) # np.int32をintに変換
@@ -201,7 +226,7 @@ class PurePursuitNode(Node):
                 self.start_pure_pursuit = False
                 self.get_logger().info("Goal has been completed")
                 time.sleep(0.2)  # 0.1秒待つ
-        self.publish_vels(self.vel, self.pure_pursuit_vel, self.p_control_vel) # 速度のパブリッシュ
+        self.publish_vels(self.vel, self.pure_pursuit_vel, self.pi_control_vel) # 速度のパブリッシュ
         self.current_speed, self.current_lookahead_distance = self.change_speed_lookahead_distance (self.path_data, self.closest_index)
         self.previous_pose = robot_pose # 位置の更新
 
@@ -252,6 +277,7 @@ class PurePursuitNode(Node):
         return lookahead_point, closest_point, closest_index
 
     def compute_velocity (self,
+            path_data: NDArray[np.float64],
             robot_pose: NDArray[np.float64], 
             lookahead_point: NDArray[np.float64],
             closest_point: NDArray[np.float64],
@@ -261,13 +287,15 @@ class PurePursuitNode(Node):
         self.pure_pursuit_vel = self.rotate_vel(
             self.calc_pure_pursuit_vel(robot_pose, lookahead_point, speed), 
             -robot_pose[2])
-        self.p_control_vel = self.rotate_vel(
-            self.compute_path_P_input(robot_pose, closest_point, self.closest_index, self.angles, self.max_angle, self.path_p_gain),
+        self.raw_pi_input_vel, self.error = self.compute_path_PI_input(
+            path_data, robot_pose, closest_point, self.closest_index, self.raw_pi_input_vel, self.error)
+        self.pi_control_vel = self.rotate_vel(
+            self.raw_pi_input_vel,
             -robot_pose[2])
         self.angle_controller.set_gains(self.angle_p_gains[self.closest_index], self.angle_i_gains[self.closest_index])
         omega: float = self.compute_angle_PI (closest_point, robot_pose, self.dt)
         vel: NDArray[np.float64] = np.array([0.0, 0.0, 0.0])
-        vel[:2] = self.pure_pursuit_vel + self.p_control_vel
+        vel[:2] = self.pure_pursuit_vel + self.pi_control_vel
         vel[0] = self.first_order_vel(previous_vel[0], vel[0], 1.0, self.dt, 0.1)
         vel[1] = self.first_order_vel(previous_vel[1], vel[1], 1.0, self.dt, 0.1)
         vel[2] = omega
@@ -299,14 +327,14 @@ class PurePursuitNode(Node):
     def publish_vels (self, 
             vel: NDArray[np.float64],
             pure_pursuit_vel: NDArray[np.float64],
-            p_control_vel: NDArray[np.float64],
+            pi_control_vel: NDArray[np.float64],
         ) -> None:
         vel_msg = self.vel_to_Twist(vel)
         pure_pursuit_vel_msg = self.vel_to_TwistStamped(pure_pursuit_vel)
-        p_control_vel_msg = self.vel_to_TwistStamped(p_control_vel)
+        pi_control_vel_msg = self.vel_to_TwistStamped(pi_control_vel)
         self.vel_pub.publish(vel_msg)
         self.pure_pursuit_vel_pub.publish(pure_pursuit_vel_msg)
-        self.p_control_vel_pub.publish(p_control_vel_msg)
+        self.pi_control_vel_pub.publish(pi_control_vel_msg)
         self.get_logger().debug(f"v_x: {vel_msg.linear.x}, v_y: {vel_msg.linear.y}, omega: {vel_msg.angular.z}")
 
     def ndarray_to_PoseStamped (self, array: NDArray[np.float64]) -> PoseStamped:
@@ -333,18 +361,23 @@ class PurePursuitNode(Node):
 
         return vel
 
-    def compute_path_P_input (self, 
+    def compute_path_PI_input (self, 
+            path_data: NDArray[np.float64],
             robot_pose: NDArray[np.float64], 
             closest_point: NDArray[np.float64],
             closest_index: int,
-            angles: NDArray[np.float64],
-            max_angle: float,
-            path_p_gain: float
+            previous_input_vel: NDArray[np.float64],
+            previous_error: NDArray[np.float64],
         ) -> NDArray[np.float64]:
-        self.get_logger().debug(f"path_p_gain: {path_p_gain}")
-        p_input_vel = path_p_gain * (1.0 + (1.0 / self.path_p_magnification - 1.0) * angles[closest_index] / max_angle) * (closest_point[:2] - robot_pose[:2])
+        # description: 速度型PI制御器による速度入力の計算
+        path_p_gain = path_data[closest_index][8] # 速度型PI制御器のPゲイン
+        path_i_gain = path_data[closest_index][9] # 速度型PI制御器のIゲイン
+        self.get_logger().debug(f"path_p_gain: {path_p_gain}, path_i_gain: {path_i_gain}")
+        # p_input_vel = path_p_gain * (1.0 + (1.0 / self.path_p_magnification - 1.0) * angles[closest_index] / max_angle) * (closest_point[:2] - robot_pose[:2])
+        error = closest_point[:2] - robot_pose[:2]
+        pi_input_vel = previous_input_vel + path_p_gain * (error - previous_error) + path_i_gain * error
 
-        return p_input_vel
+        return pi_input_vel, error
 
     def compute_angle_PI (self, robot_pose: NDArray[np.float64], closest_point: NDArray[np.float64], dt: float = 0.1) -> float:
         return -self.angle_controller.update(closest_point[2], robot_pose[2], dt) # 逆なのでマイナス

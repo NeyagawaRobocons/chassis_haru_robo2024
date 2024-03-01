@@ -142,6 +142,8 @@ class PathActionClient(Node):
             point.angle_p_gain = df.at[i, 'p_gain']
             point.angle_i_gain = df.at[i, 'i_gain']
             point.angle_threshold = df.at[i, 'angle_threshold']
+            point.path_p_gain = df.at[i, 'path_p_gain']
+            point.path_i_gain = df.at[i, 'path_i_gain']
             path.append(point)
         return path
 
