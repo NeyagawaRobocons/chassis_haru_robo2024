@@ -139,6 +139,9 @@ class PathActionClient(Node):
             point.theta = df.at[i, 'theta']
             point.speed = df.at[i, 'speed']
             point.lookahead_distance = df.at[i, 'lookahead_distance']
+            point.angle_p_gain = df.at[i, 'p_gain']
+            point.angle_i_gain = df.at[i, 'i_gain']
+            point.angle_threshold = df.at[i, 'angle_threshold']
             path.append(point)
         return path
 

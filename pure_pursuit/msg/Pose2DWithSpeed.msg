@@ -5,3 +5,6 @@ float64 y # [m]
 float64 theta # [rad]
 float64 speed # [m/s]
 float64 lookahead_distance # [m]
+float64 angle_p_gain # 経路の各点で変数
+float64 angle_i_gain # 経路の各点で変数
+float64 angle_threshold # 経路の先頭に格納された定数

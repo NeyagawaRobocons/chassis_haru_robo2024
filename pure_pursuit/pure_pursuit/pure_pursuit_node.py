@@ -31,23 +31,23 @@ class PurePursuitNode(Node):
             namespace='',
             parameters=[
                 ('lookahead_distance', 0.5),
-                ('path_p_gain', 0.05),
-                ('angle_p_gain', 0.5),
-                ('angle_i_gain', 0.0),
-                ('distance_threshold', 0.03), # [m]
-                ('angle_threshold', 0.1), # [rad]
+                ('path_p_gain', 0.10),
+                # ('angle_p_gain', 0.5),
+                # ('angle_i_gain', 0.0),
+                ('distance_threshold', 0.2), # [m]
+                # ('angle_threshold', 0.1), # [rad]
                 ('initial_pose', [0.0, 0.0, 0.0]),
                 ('path_p_magnification', 10.0),
                 ('dt', 0.03), # [s]
-                ('publish_rate', 10.0), # [Hz]
+                ('publish_rate', 20.0), # [Hz]
             ])
         # パラメータの取得
         self.lookahead_distance: float = self.get_parameter('lookahead_distance').value
         self.path_p_gain: float = self.get_parameter('path_p_gain').value
-        self.angle_p_gain: float = self.get_parameter('angle_p_gain').value
-        self.angle_i_gain: float = self.get_parameter('angle_i_gain').value
+        # self.angle_p_gain: float = self.get_parameter('angle_p_gain').value
+        # self.angle_i_gain: float = self.get_parameter('angle_i_gain').value
         self.distance_threshold: float = self.get_parameter('distance_threshold').value
-        self.angle_threshold: float = self.get_parameter('angle_threshold').value
+        # self.angle_threshold: float = self.get_parameter('angle_threshold').value
         self.initial_pose: NDArray[np.float64] = self.get_parameter('initial_pose').value
         self.path_p_magnification: float = self.get_parameter('path_p_magnification').value
         self.dt: float = self.get_parameter('dt').value
@@ -55,16 +55,14 @@ class PurePursuitNode(Node):
         self.get_logger().info("parameters have been initialized")
         self.get_logger().info(f"lookahead_distance: {self.lookahead_distance}")
         self.get_logger().info(f"path_p_gain: {self.path_p_gain}")
-        self.get_logger().info(f"angle_p_gain: {self.angle_p_gain}")
-        self.get_logger().info(f"angle_i_gain: {self.angle_i_gain}")
+        # self.get_logger().info(f"angle_p_gain: {self.angle_p_gain}")
+        # self.get_logger().info(f"angle_i_gain: {self.angle_i_gain}")
         self.get_logger().info(f"distance_threshold: {self.distance_threshold}")
-        self.get_logger().info(f"angle_threshold: {self.angle_threshold}")
+        # self.get_logger().info(f"angle_threshold: {self.angle_threshold}")
         self.get_logger().info(f"initial_pose: {self.initial_pose}")
         self.get_logger().info(f"path_p_magnification: {self.path_p_magnification}")
         self.get_logger().info(f"dt: {self.dt}")
         self.get_logger().info(f"publish_rate: {self.publish_rate}")
-        # PI制御器の初期化
-        self.angle_controller = PIController(self.angle_p_gain, self.angle_i_gain, max_input=1.0)
         # 準静的な変数の初期化
         self.path_data: NDArray[np.float64] = None # np.array([[x1, y1, theta1, speed1], [x2, y2, theta2, speed2], ...])の形
         self.indices: NDArray[np.int8] = np.array([]) # np.array([1, 2, 3])の形
@@ -75,6 +73,11 @@ class PurePursuitNode(Node):
         self.max_lookahead_distance: float = 0.0
         self.set_pose_index: int = 0
         self.pure_pursuit_timer = self.create_timer(1.0 / self.publish_rate, self.pure_pursuit_timer_callback) # タイマーの初期化
+        self.angle_threshold: float = 0.1
+        self.angle_p_gain: float = 0.0
+        self.angle_i_gain: float = 0.0
+        # PI制御器の初期化
+        self.angle_controller = PIController(self.angle_p_gain, self.angle_i_gain, max_input=1.0)
         # 動的な変数の初期化
         self.robot_pose: NDArray[np.float64] = np.array(self.initial_pose) # np.array([x, y, theta])の形
         self.previous_pose: NDArray[np.float64] = self.robot_pose # np.array([x, y, theta])の形
@@ -86,6 +89,7 @@ class PurePursuitNode(Node):
         self.current_speed: float = 0.0
         self.current_lookahead_distance = self.lookahead_distance
         self.pre_passed_index: int = 0
+        self.processed_indices = [] # 処理済みのインデックスのリスト
         # action serverのための変数の初期化
         self.goal_handle = None # GoalHandleの初期化
         self.result_msg = None # Resultの初期化
@@ -101,14 +105,17 @@ class PurePursuitNode(Node):
         self.indices = np.array(goal_handle.request.feedback_indices) # 特定の点のインデックスの受け取りと格納
         self.set_pose_index = goal_handle.request.set_pose_index # 特定の点のインデックスの受け取りと格納
         self.get_logger().info("path data has been received")
-        self.path_data = np.array([[msg.x, msg.y, msg.theta, msg.speed, msg.lookahead_distance] for msg in path_msgs]) # 経路データをnumpy配列に変換
+        self.path_data = np.array([[
+                msg.x, msg.y, msg.theta, msg.speed, msg.lookahead_distance, msg.angle_p_gain, msg.angle_i_gain, msg.angle_threshold
+            ] for msg in path_msgs]) # 経路データをnumpy配列に変換
         self.previous_pose = self.path_data[0, :3]
         self.tangents = self.compute_tangents (self.path_data) # 接ベクトルの計算と格納
         self.angles, self.max_angle = self.compute_angles (self.tangents) # 角度の計算と格納
         self.angles = gaussian_filter1d(self.angles, sigma=3) # 角度の平滑化
-        # self.max_speed = np.max(self.path_data[:, 3]) # 最大速度の計算
         self.lookahead_distances = self.path_data[:, 4] # 先行距離の計算
-        # self.max_lookahead_distance = np.max(self.lookahead_distances) # 最大先行距離の計算
+        self.angle_p_gains = self.path_data[:, 5] # 角度Pゲインの計算
+        self.angle_i_gains = self.path_data[:, 6] # 角度Iゲインの計算
+        self.angle_threshold = self.path_data[0, 7] # 角度の閾値の計算
         self.get_logger().info("path data has been initialized")
         self.get_logger().debug(f"path_data: {self.path_data}")
         self.get_logger().debug(f"indices: {self.indices}")
@@ -172,12 +179,14 @@ class PurePursuitNode(Node):
         # 完了処理
         for index in self.indices:
             index = int(index) # np.int32をintに変換
-            if self.closest_index >= index and self.closest_index < index + 1:
+            if self.closest_index >= index and index not in self.processed_indices:
+            # and self.closest_index < index + 1:
                 # フィードバックにインデックスを返す
                 feedback_msg = PathAndFeedback.Feedback()
                 feedback_msg.current_index = index
                 self.goal_handle.publish_feedback(feedback_msg)
                 self.get_logger().info(f"feedback: {index}, type: {type(index)}")
+                self.processed_indices.append(index)
         if self.distance(robot_pose[:2], self.path_data[-1][:2]) < self.distance_threshold:
             self.get_logger().info(f"x, y distance is less than threshold, robot angle: {robot_pose[2]}, goal angle: {self.path_data[-1][2]}")
             # self.vel[:2] = self.path_p_gain * (self.path_data[-1][:2] - robot_pose[:2]) @ self.rotation_matrix(-robot_pose[2]).T
@@ -227,7 +236,7 @@ class PurePursuitNode(Node):
         closest_index = np.argmin(differences) + start_index
         closest_index = int(closest_index)
         closest_point: NDArray[np.float64] = path_data[closest_index]
-
+        self.get_logger().info(f"indices: {self.indices}")
         self.get_logger().info(f"closest_index: {closest_index}, closest_point: {closest_point}")
 
         # diff_LA_dist = distances[start_index:end_index] - lookahead_distance
@@ -255,6 +264,7 @@ class PurePursuitNode(Node):
         self.p_control_vel = self.rotate_vel(
             self.compute_path_P_input(robot_pose, closest_point, self.closest_index, self.angles, self.max_angle, self.path_p_gain),
             -robot_pose[2])
+        self.angle_controller.set_gains(self.angle_p_gains[self.closest_index], self.angle_i_gains[self.closest_index])
         omega: float = self.compute_angle_PI (closest_point, robot_pose, self.dt)
         vel: NDArray[np.float64] = np.array([0.0, 0.0, 0.0])
         vel[:2] = self.pure_pursuit_vel + self.p_control_vel

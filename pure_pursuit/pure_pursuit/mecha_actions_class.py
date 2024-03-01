@@ -73,29 +73,42 @@ class HinaCmdActionClient(Node):
 
 def main() -> None:
     rclpy.init()
-    # node = DaizaCmdActionClient()
-    node = HinaCmdActionClient()
+    node = DaizaCmdActionClient()
+    # node = HinaCmdActionClient()
     commands = [
-        # DaizaCmd.Goal.READY,
-        # DaizaCmd.Goal.EXPAND_AND_UNCLAMP,
-        # DaizaCmd.Goal.CLAMP_AND_CONTRACT,
-        # DaizaCmd.Goal.EXPAND_AND_PLACE_AND_CONTRACT,
-        HinaCmd.Goal.READY,
-        HinaCmd.Goal.DOWN_AND_TAKE,
-        HinaCmd.Goal.UP_AND_CARRY,
-        HinaCmd.Goal.UP_AND_PLACE,
-        HinaCmd.Goal.LATCH_UNLOCK,
-        HinaCmd.Goal.READY,
-        HinaCmd.Goal.LATCH_UNLOCK_1,
-        HinaCmd.Goal.LATCH_UNLOCK_2,
-        HinaCmd.Goal.READY,
+        DaizaCmd.Goal.READY,
+        DaizaCmd.Goal.EXPAND_AND_UNCLAMP,
+        DaizaCmd.Goal.CLAMP_AND_CONTRACT,
+        DaizaCmd.Goal.EXPAND_AND_PLACE_AND_CONTRACT,
+        DaizaCmd.Goal.READY,
+        # HinaCmd.Goal.READY,
+        # HinaCmd.Goal.DOWN_AND_TAKE,
+        # HinaCmd.Goal.UP_AND_CARRY,
+        # HinaCmd.Goal.UP_AND_PLACE,
+        # HinaCmd.Goal.LATCH_UNLOCK,
+        # HinaCmd.Goal.READY,
+        # HinaCmd.Goal.LATCH_UNLOCK_1,
+        # HinaCmd.Goal.LATCH_UNLOCK_2,
+        # HinaCmd.Goal.READY,
     ]
     for command in commands:
         node.send_goal(command)
         print(f"sending goal: {command}")
         rclpy.spin_until_future_complete(node, node._send_goal_future)
         print(f"result: {node._send_goal_future.result()}")
-        time.sleep(6)
+        time.sleep(1)
+        print("counting down... 6")
+        time.sleep(1)
+        print("counting down... 5")
+        time.sleep(1)
+        print("counting down... 4")
+        time.sleep(1)
+        print("counting down... 3")
+        time.sleep(1)
+        print("counting down... 2")
+        time.sleep(1)
+        print("counting down... 1")
+        time.sleep(1)
     node.destroy_node()
     rclpy.shutdown()
 
