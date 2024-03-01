@@ -16,19 +16,6 @@ from PI_controller_class import PIController
 class PurePursuitNode(Node):
     def __init__(self) -> None:
         super().__init__('pure_pursuit_node')
-<<<<<<< HEAD
-=======
-        # トピック, アクションの初期化
-        self.pose_sub = self.create_subscription(PoseStamped, '/corrected_output_topic', self.pose_callback, 10)
-        self.action_server = ActionServer(self, PathAndFeedback, 'path_and_feedback', self.execute_callback)
-        self.vel_pub = self.create_publisher(Twist, '/robot_vel', 10)
-        # 可視化用トピックの初期化
-        self.pure_pursuit_vel_pub = self.create_publisher(TwistStamped, '/pure_pursuit_vel', 10)
-        self.p_control_vel_pub = self.create_publisher(TwistStamped, '/p_control_vel', 10)
-        self.lookahead_pub = self.create_publisher(PoseStamped, 'lookahead_pose', 10)
-        self.closest_pub = self.create_publisher(PoseStamped, 'closest_pose', 10)
-        self.circle_pub = self.create_publisher(Marker, 'circle_marker', 10)
->>>>>>> 4b7f7bf2c0abfa0c1134bb203daa4a0db76925db
         # パラメータの宣言
         self.declare_parameters(
             namespace='',
