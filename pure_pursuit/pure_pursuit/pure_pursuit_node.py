@@ -222,7 +222,7 @@ class PurePursuitNode(Node):
                 self.publish_vels(self.vel, self.pure_pursuit_vel, self.pi_control_vel) # 速度のパブリッシュ
                 # 完了処理を行う
                 self.result_msg = PathAndFeedback.Result()
-                self.result_msg.final_index = self.indices[-1]
+                self.result_msg.final_index = int(self.indices[-1])
                 # self.vel_pub.publish(Twist()) # 速度のパブリッシュ(停止)
                 self.completed = True
                 self.start_pure_pursuit = False
