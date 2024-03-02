@@ -89,6 +89,7 @@ class PurePursuitNode(Node):
         self.angle_controller = PIController(self.angle_p_gain, self.angle_i_gain, max_input=1.0)
         # 動的な変数の初期化
         self.robot_pose: NDArray[np.float64] = np.array(self.initial_pose) # np.array([x, y, theta])の形
+        self.robot_orientation: Quaternion = Quaternion() # 姿勢の初期化
         self.previous_pose: NDArray[np.float64] = self.robot_pose # np.array([x, y, theta])の形
         self.pure_pursuit_vel: NDArray[np.float64] = np.array([0.0, 0.0]) # np.array([v_x, v_y])の形
         self.pi_control_vel: NDArray[np.float64] = np.array([0.0, 0.0]) # np.array([v_x, v_y])の形
@@ -100,7 +101,9 @@ class PurePursuitNode(Node):
         self.pre_passed_index: int = 0
         self.processed_indices = [] # 処理済みのインデックスのリスト
         self.error: NDArray[np.float64] = np.array([0.0, 0.0]) # np.array([x_error, y_error])の形
+        self.error_quaternion: NDArray[np.float64] = np.array([0.0, 0.0, 0.0, 0.0]) # np.array([x_error, y_error])の形
         self.raw_pi_input_vel: NDArray[np.float64] = np.array([0.0, 0.0]) # np.array([v_x, v_y])の形
+        self.omega_quaternion: NDArray[np.float64] = np.array([0.0, 0.0, 0.0, 0.0]) # np.array([x_error, y_error])の形
         # action serverのための変数の初期化
         self.goal_handle = None # GoalHandleの初期化
         self.result_msg = None # Resultの初期化
@@ -156,7 +159,8 @@ class PurePursuitNode(Node):
         self.processed_indices = [] # 処理済みのインデックスのリスト
         self.error = np.array([0.0, 0.0]) # np.array([x_error, y_error])の形
         self.raw_pi_input_vel = np.array([0.0, 0.0]) # np.array([v_x, v_y])の形
-        self.angle_controller.reset_integral() # 積分値のリセット
+        # self.angle_controller.reset_integral() # 積分値のリセット
+        self.error_quaternion = np.array([0.0, 0.0, 0.0, 0.0]) # np.array([x_error, y_error])の形
         self.get_logger().info("pure pursuit has been started")
         # 新しいスレッドで条件が満たされるのを待つ
         threading.Thread(target=self.wait_for_condition).start()
@@ -174,6 +178,7 @@ class PurePursuitNode(Node):
 
     def pose_callback (self, msg: PoseStamped) -> None:
         self.robot_pose = self.pose_to_array(msg) # 位置の格納
+        self.robot_orientation = msg.pose.orientation # 姿勢の格納
 
     def pure_pursuit_timer_callback (self) -> None:
         self.get_logger().debug(f"start_pure_pursuit: {self.start_pure_pursuit}")
@@ -292,7 +297,18 @@ class PurePursuitNode(Node):
             self.raw_pi_input_vel,
             -robot_pose[2])
         self.angle_controller.set_gains(self.angle_p_gains[self.closest_index], self.angle_i_gains[self.closest_index])
-        omega: float = self.compute_angle_PI (closest_point, robot_pose, self.dt)
+        # 速度型PI制御器による速度入力の計算 as quaternion
+        error_quaternion = self.quaternion_to_ndarray(self.yaw_to_quaternion(closest_point[2]))\
+              - self.quaternion_to_ndarray(self.robot_orientation)
+        self.omega_quaternion = self.vel_type_PI_controller( # calculate omega as quaternion
+            self.angle_p_gain,
+            self.angle_i_gain,
+            error=error_quaternion,
+            previous_error=self.error_quaternion,
+            previous_input_vel=self.omega_quaternion,
+        )
+        self.error_quaternion = error_quaternion
+        omega: float = self.quaternion_to_yaw(self.omega_quaternion)
         vel: NDArray[np.float64] = np.array([0.0, 0.0, 0.0])
         vel[:2] = self.pure_pursuit_vel + self.pi_control_vel
         # vel[0] = self.first_order_vel(previous_vel[0], vel[0], 1.0, self.dt, 0.1)
@@ -300,6 +316,9 @@ class PurePursuitNode(Node):
         vel[2] = omega
 
         return vel
+    
+    def quaternion_to_ndarray (self, quaternion: Quaternion) -> NDArray[np.float64]:
+        return np.array([quaternion.x, quaternion.y, quaternion.z, quaternion.w])
 
     def vel_to_Twist (self, vel: NDArray[np.float64]) -> Twist:
         vel_msg = Twist()
@@ -374,9 +393,21 @@ class PurePursuitNode(Node):
         self.get_logger().debug(f"path_p_gain: {path_p_gain}, path_i_gain: {path_i_gain}")
         # p_input_vel = path_p_gain * (1.0 + (1.0 / self.path_p_magnification - 1.0) * angles[closest_index] / max_angle) * (closest_point[:2] - robot_pose[:2])
         error = closest_point[:2] - robot_pose[:2]
-        pi_input_vel = previous_input_vel + path_p_gain * (error - previous_error) + path_i_gain * error
+        # pi_input_vel = previous_input_vel + path_p_gain * (error - previous_error) + path_i_gain * error
+        pi_input_vel = self.vel_type_PI_controller (path_p_gain, path_i_gain, error, previous_error, previous_input_vel)
 
         return pi_input_vel, error
+    
+    def vel_type_PI_controller (self,
+            p_gain: float,
+            i_gain: float,
+            error: NDArray[np.float64],
+            previous_error: NDArray[np.float64],
+            previous_input_vel: NDArray[np.float64],
+        ) -> NDArray[np.float64]:
+        # description: 速度型PI制御器による速度入力の計算
+        input_vel = previous_input_vel + p_gain * (error - previous_error) + i_gain * error
+        return input_vel
 
     def compute_angle_PI (self, robot_pose: NDArray[np.float64], closest_point: NDArray[np.float64], dt: float = 0.1) -> float:
         return -self.angle_controller.update(closest_point[2], robot_pose[2], dt) # 逆なのでマイナス
