@@ -8,6 +8,7 @@ Panels:
         - /Status1
         - /Axes1
         - /Path1
+        - /Pose3
         - /LaserScan1
         - /LaserScan2
         - /Axes3
@@ -257,7 +258,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /corrected_pose
+        Value: /corrected_robot_pose
       Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
@@ -387,7 +388,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 8.085561752319336
+      Distance: 10.876921653747559
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1

@@ -219,9 +219,10 @@ class PurePursuitNode(Node):
             self.vel[:2] = np.array([0.0, 0.0])
             if abs(robot_pose[2] - self.path_data[-1][2]) < self.angle_threshold:
                 self.vel[2] = 0.0
+                self.publish_vels(self.vel, self.pure_pursuit_vel, self.pi_control_vel) # 速度のパブリッシュ
                 # 完了処理を行う
                 self.result_msg = PathAndFeedback.Result()
-                self.result_msg.final_index = self.closest_index
+                self.result_msg.final_index = self.indices[-1]
                 # self.vel_pub.publish(Twist()) # 速度のパブリッシュ(停止)
                 self.completed = True
                 self.start_pure_pursuit = False
