@@ -63,6 +63,9 @@ class RobotMasterNode(Node):
             {'path_number': 0, 'daiza_command': DaizaCmd.Goal.CLAMP_AND_CONTRACT, 'hina_command': 0, 'bonbori_command': False},
             {'path_number': 2, 'daiza_command': 0, 'hina_command': 0, 'bonbori_command': False},
             {'path_number': 3, 'daiza_command': 0, 'hina_command': 0, 'bonbori_command': False},
+            {'path_number': 0, 'daiza_command': 0, 'hina_command': 13, 'bonbori_command': False},
+            {'path_number': 4, 'daiza_command': 0, 'hina_command': 0, 'bonbori_command': False},
+            {'path_number': 0, 'daiza_command': 0, 'hina_command': 9, 'bonbori_command': True},
         ]
         self.counter: int = 0
         self.get_logger().info('Path action client has been initialized')
