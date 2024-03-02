@@ -156,6 +156,7 @@ class PurePursuitNode(Node):
         self.processed_indices = [] # 処理済みのインデックスのリスト
         self.error = np.array([0.0, 0.0]) # np.array([x_error, y_error])の形
         self.raw_pi_input_vel = np.array([0.0, 0.0]) # np.array([v_x, v_y])の形
+        self.angle_controller.reset_integral() # 積分値のリセット
         self.get_logger().info("pure pursuit has been started")
         # 新しいスレッドで条件が満たされるのを待つ
         threading.Thread(target=self.wait_for_condition).start()

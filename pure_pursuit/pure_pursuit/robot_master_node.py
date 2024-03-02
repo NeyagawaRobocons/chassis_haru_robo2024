@@ -60,7 +60,7 @@ class RobotMasterNode(Node):
         self.timer = self.create_timer(0.1, self.timer_callback)
         self.sequence_map = [ # if path_number == 0: send command without robot moving
             {'path_number': 1, 'daiza_command': 0, 'hina_command': 0, 'bonbori_command': False},
-            # {'path_number': 0, 'daiza_command': DaizaCmd.Goal.CLAMP_AND_CONTRACT, 'hina_command': 0, 'bonbori_command': False},
+            {'path_number': 0, 'daiza_command': DaizaCmd.Goal.CLAMP_AND_CONTRACT, 'hina_command': 0, 'bonbori_command': False},
             {'path_number': 2, 'daiza_command': 0, 'hina_command': 0, 'bonbori_command': False},
             {'path_number': 3, 'daiza_command': 0, 'hina_command': 0, 'bonbori_command': False},
         ]
@@ -69,6 +69,7 @@ class RobotMasterNode(Node):
 
     def timer_callback(self):
         self.get_logger().info(f"counter: {self.counter}")
+        self.get_logger().info(f"is_get_result: {self.is_get_result} @ timer_callback")
         if self.sequence_map[self.counter]['path_number'] == 0:
             if self.sequence_map[self.counter]['daiza_command']:
                 self.is_get_result = self._daiza_cmd_action_client.is_get_result
@@ -130,6 +131,8 @@ class RobotMasterNode(Node):
         self._get_result_future.add_done_callback(self.get_result_callback)
 
     def get_result_callback(self, future):
+        self.is_get_result = True
+        self.get_logger().info(f"is_get_result: {self.is_get_result}")
         result = future.result().result.final_index
         self.get_logger().info('Path Result: {0}'.format(result))
         if result in self.indices:
@@ -139,7 +142,6 @@ class RobotMasterNode(Node):
             bonbori_state: bool = bool(self.bonbori_commands[index])
             if not self.debug:
                 self.send_mecha_commands(daiza_state, hina_state, bonbori_state)
-        self.is_get_result = True
 
     def feedback_callback(self, feedback_msg):
         feedback: int = feedback_msg.feedback.current_index
