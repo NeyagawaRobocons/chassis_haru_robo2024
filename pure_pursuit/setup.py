@@ -31,6 +31,7 @@ setup(
             'twist_to_twist_stamped = pure_pursuit.twist_to_twist_stamped:main',
             'action_test = pure_pursuit.mecha_actions_class:main',
             'robot_master_node = pure_pursuit.robot_master_node:main',
+            'path_server_node = pure_pursuit.path_server_node:main',
         ],
     },
 )

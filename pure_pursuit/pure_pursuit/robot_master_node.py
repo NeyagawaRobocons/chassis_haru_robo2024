@@ -5,7 +5,7 @@ from rclpy.node import Node
 from nav_msgs.msg import Path
 from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion, PoseWithCovarianceStamped
 from pure_pursuit.action import PathAndFeedback
-from pure_pursuit.msg import Pose2DWithSpeed, Path2DWithSpeed
+from pure_pursuit.msg import Pose2DWithParams, Path2DWithParams
 from mecha_actions_class import DaizaCmdActionClient, HinaCmdActionClient
 from mecha_control.action import DaizaCmd, HinaCmd
 from std_msgs.msg import Bool
@@ -39,8 +39,8 @@ class RobotMasterNode(Node):
         self.path_file_name: str = f'path{self.path_number}.csv'
         self.indices_file_name: str = f'indices_and_commands{self.path_number}.csv'
         self.debug: bool = self.get_parameter('debug').value
-        self.path = self.get_path()
-        self.indices, self.daiza_commands, self.hina_commands, self.bonbori_commands, self.set_pose_index = self.get_indices_and_commands()
+        self.path, self.distance_threshold, self.angle_threshold = self.get_path()
+        self.indices, self.daiza_commands, self.hina_commands, self.bonbori_commands = self.get_indices_and_commands()
         self.pre_feedback = -1
         self.get_logger().info('Path and indices have been loaded')
         self.get_logger().info(f"path_number: {self.path_number}")
@@ -93,7 +93,7 @@ class RobotMasterNode(Node):
                 self.send_goal(self.path, self.indices)
             self.counter += 1
 
-    def send_goal(self, path: Path2DWithSpeed, indices: list[int]) -> None:
+    def send_goal(self, path: Path2DWithParams, indices: list[int]) -> None:
         path_msg = Path()
         path_msg.header.frame_id = 'map'
         path_msg.poses = [PoseStamped(pose=Pose(position=Point(x=point.x, y=point.y), orientation=self.yaw_to_quaternion(point.theta + np.pi/2))) for point in path]
@@ -169,10 +169,12 @@ class RobotMasterNode(Node):
             self._bonbori_cmd_service(bonbori_state)
 
     def get_path(self):
-        path = []
+        path: Path2DWithParams = None
+        distance_threshold: float = 0.0
+        angle_threshold: float = 0.0
         df = pd.read_csv(os.path.join(get_package_share_directory('pure_pursuit'), 'csv', self.path_file_name))
         for i in range(len(df)):
-            point = Pose2DWithSpeed()
+            point = Pose2DWithParams()
             point.x = df.at[i, 'x']
             point.y = df.at[i, 'y']
             point.theta = df.at[i, 'theta']
@@ -180,28 +182,26 @@ class RobotMasterNode(Node):
             point.lookahead_distance = df.at[i, 'lookahead_distance']
             point.angle_p_gain = df.at[i, 'p_gain']
             point.angle_i_gain = df.at[i, 'i_gain']
-            point.angle_threshold = df.at[i, 'angle_threshold']
             point.path_p_gain = df.at[i, 'path_p_gain']
             point.path_i_gain = df.at[i, 'path_i_gain']
             path.append(point)
-        return path
+        distance_threshold = df.at[0, 'distance_threshold']
+        angle_threshold = df.at[0, 'angle_threshold']
+        return path, distance_threshold, angle_threshold
 
     def get_indices_and_commands(self):
         indices = []
         daiza_commands = []
         hina_commands = []
         bonbori_commands = []
-        set_pose_index: int = 0
         df = pd.read_csv(os.path.join(get_package_share_directory('pure_pursuit'), 'csv', self.indices_file_name))
         for i in range(len(df)):
             indices.append(df.at[i, 'index'])
             daiza_commands.append(df.at[i, 'command1'])
             hina_commands.append(df.at[i, 'command2'])
             bonbori_commands.append(df.at[i, 'command3'])
-            if df.at[i, 'set_pose_flag']:
-                set_pose_index = int(df.at[i, 'index'])
 
-        return indices, daiza_commands, hina_commands, bonbori_commands, set_pose_index
+        return indices, daiza_commands, hina_commands, bonbori_commands
     
     def set_pose(self, path: NDArray[np.float64], index: int) -> None:
         initialpose_msg = PoseWithCovarianceStamped()
