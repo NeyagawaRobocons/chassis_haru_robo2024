@@ -19,7 +19,7 @@ class PurePursuitNode(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('pose_topic', '/robot_pose'),
+                ('pose_topic', '/corrected_robot_pose'),
                 ('input_action', 'path_and_feedback'),
                 ('output_twist_topic', '/robot_vel'),
                 ('lookahead_distance', 0.5),
