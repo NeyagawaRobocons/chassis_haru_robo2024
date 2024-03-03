@@ -26,7 +26,7 @@ class PurePursuitNode(Node):
                 # ('path_p_gain', 0.10),
                 # ('angle_p_gain', 0.5),
                 # ('angle_i_gain', 0.0),
-                ('distance_threshold', 0.1), # [m]
+                # ('distance_threshold', 0.1), # [m]
                 # ('angle_threshold', 0.1), # [rad]
                 ('initial_pose', [0.0, 0.0, 0.0]),
                 # ('path_p_magnification', 10.0),
@@ -41,7 +41,7 @@ class PurePursuitNode(Node):
         # self.path_p_gain: float = self.get_parameter('path_p_gain').value
         # self.angle_p_gain: float = self.get_parameter('angle_p_gain').value
         # self.angle_i_gain: float = self.get_parameter('angle_i_gain').value
-        self.distance_threshold: float = self.get_parameter('distance_threshold').value
+        # self.distance_threshold: float = self.get_parameter('distance_threshold').value
         # self.angle_threshold: float = self.get_parameter('angle_threshold').value
         self.initial_pose: NDArray[np.float64] = self.get_parameter('initial_pose').value
         # self.path_p_magnification: float = self.get_parameter('path_p_magnification').value
@@ -55,7 +55,7 @@ class PurePursuitNode(Node):
         # self.get_logger().info(f"path_p_gain: {self.path_p_gain}")
         # self.get_logger().info(f"angle_p_gain: {self.angle_p_gain}")
         # self.get_logger().info(f"angle_i_gain: {self.angle_i_gain}")
-        self.get_logger().info(f"distance_threshold: {self.distance_threshold}")
+        # self.get_logger().info(f"distance_threshold: {self.distance_threshold}")
         # self.get_logger().info(f"angle_threshold: {self.angle_threshold}")
         self.get_logger().info(f"initial_pose: {self.initial_pose}")
         # self.get_logger().info(f"path_p_magnification: {self.path_p_magnification}")
@@ -77,10 +77,8 @@ class PurePursuitNode(Node):
         self.tangents: NDArray[np.float64] = None # np.array([[0.0, 0.0], [0.0, 0.0]])の形
         self.angles: NDArray[np.float64] = None # np.array([0.0, 0.0, 0.0, ...])の形
         self.max_angle: float = 0.0
-        self.max_speed: float = 0.0
-        self.max_lookahead_distance: float = 0.0
-        self.set_pose_index: int = 0
         self.pure_pursuit_timer = self.create_timer(1.0 / self.publish_rate, self.pure_pursuit_timer_callback) # タイマーの初期化
+        self.distance_threshold: float = 0.1
         self.angle_threshold: float = 0.1
         self.angle_p_gain: float = 0.0
         self.angle_i_gain: float = 0.0
@@ -113,7 +111,6 @@ class PurePursuitNode(Node):
         self.goal_event.clear() # イベントフラグをリセット
         path_msgs = goal_handle.request.path.path # 経路データの受け取りと格納
         self.indices = np.array(goal_handle.request.feedback_indices) # 特定の点のインデックスの受け取りと格納
-        self.set_pose_index = goal_handle.request.set_pose_index # 特定の点のインデックスの受け取りと格納
         self.get_logger().info("path data has been received")
         self.path_data = np.array([[
                 msg.x, 
@@ -123,10 +120,11 @@ class PurePursuitNode(Node):
                 msg.lookahead_distance, 
                 msg.angle_p_gain, 
                 msg.angle_i_gain, 
-                msg.angle_threshold,
                 msg.path_p_gain,
                 msg.path_i_gain,
             ] for msg in path_msgs]) # 経路データをnumpy配列に変換
+        self.distance_threshold = goal_handle.request.distance_threshold # 距離の閾値の受け取りと格納
+        self.angle_threshold = goal_handle.request.angle_threshold # 角度の閾値の受け取りと格納
         self.previous_pose = self.path_data[0, :3]
         self.tangents = self.compute_tangents (self.path_data) # 接ベクトルの計算と格納
         self.angles, self.max_angle = self.compute_angles (self.tangents) # 角度の計算と格納
@@ -134,7 +132,6 @@ class PurePursuitNode(Node):
         self.lookahead_distances = self.path_data[:, 4] # 先行距離の計算
         self.angle_p_gains = self.path_data[:, 5] # 角度Pゲインの計算
         self.angle_i_gains = self.path_data[:, 6] # 角度Iゲインの計算
-        self.angle_threshold = self.path_data[0, 7] # 角度の閾値の計算
         self.get_logger().info("path data has been initialized")
         self.get_logger().debug(f"path_data: {self.path_data}")
         self.get_logger().debug(f"indices: {self.indices}")
@@ -388,8 +385,8 @@ class PurePursuitNode(Node):
             previous_error: NDArray[np.float64],
         ) -> NDArray[np.float64]:
         # description: 速度型PI制御器による速度入力の計算
-        path_p_gain = path_data[closest_index][8] # 速度型PI制御器のPゲイン
-        path_i_gain = path_data[closest_index][9] # 速度型PI制御器のIゲイン
+        path_p_gain = path_data[closest_index][7] # 速度型PI制御器のPゲイン
+        path_i_gain = path_data[closest_index][8] # 速度型PI制御器のIゲイン
         self.get_logger().debug(f"path_p_gain: {path_p_gain}, path_i_gain: {path_i_gain}")
         # p_input_vel = path_p_gain * (1.0 + (1.0 / self.path_p_magnification - 1.0) * angles[closest_index] / max_angle) * (closest_point[:2] - robot_pose[:2])
         error = closest_point[:2] - robot_pose[:2]

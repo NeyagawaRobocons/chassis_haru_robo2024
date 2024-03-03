@@ -1,9 +1,8 @@
 # パスとフィードバックのデータ
 
 # ゴール定義
-pure_pursuit/Path2DWithSpeed path
+pure_pursuit/Path2DWithParams path
 int32[] feedback_indices
-int32 set_pose_index
 ---
 # 結果定義
 int32 final_index

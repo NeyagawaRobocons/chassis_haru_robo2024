@@ -1,0 +1,25 @@
+# GetPath.srv
+
+# --- request constants (Field type +Path name)
+uint8 RIGHT_DAIZA_COLLECT=1
+uint8 RIGHT_DAIZA_PLACE=2
+uint8 RIGHT_HINA_COLLECT=3
+uint8 RIGHT_HINA_PLACE=4
+uint8 RIGHT_HINA_PLACE_RETRY=5
+
+uint8 LEFT_DAIZA_COLLECT=6
+uint8 LEFT_DAIZA_PLACE=7
+uint8 LEFT_HINA_COLLECT=8
+uint8 LEFT_HINA_PLACE=9
+uint8 LEFT_HINA_PLACE_RETRY=10
+
+# ---
+
+uint8 path_number
+
+---
+Path2DWithParams path
+int32[] indices
+int8[] daiza_commands
+int8[] hina_commands
+bool[] bonbori_commands

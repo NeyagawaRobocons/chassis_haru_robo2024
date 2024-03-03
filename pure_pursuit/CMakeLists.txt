@@ -22,9 +22,10 @@ find_package(robot_master REQUIRED)
 
 find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Pose2DWithSpeed.msg"
-  "msg/Path2DWithSpeed.msg"
+  "msg/Pose2DWithParams.msg"
+  "msg/Path2DWithParams.msg"
   "action/PathAndFeedback.action"
+  "srv/GetPath.srv"
 )
 ament_export_dependencies(rosidl_default_runtime)
 
@@ -65,6 +66,7 @@ install(PROGRAMS
   pure_pursuit/PI_controller_class.py
   pure_pursuit/twist_to_twiststamped.py
   pure_pursuit/robot_master_node.py
+  pure_pursuit/path_server_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
