@@ -188,17 +188,22 @@ class PurePursuitNode(Node):
             robot_pose, self.path_data, self.closest_index, self.current_lookahead_distance)
         self.get_logger().debug(f"closest_point: {self.closest_point}")
         self.get_logger().debug(f"lookahead_point: {self.lookahead_point}")
+        if self.lookahead_point is None or self.closest_point is None:
+            self.get_logger().warn("lookahead_pose or closest_pose is None. So set vel to 0.0")
+            self.vel = np.array([0.0, 0.0, 0.0])
+            self.pure_pursuit_vel = np.array([0.0, 0.0])
+            self.pi_control_vel = np.array([0.0, 0.0])
+            self.publish_vels(self.vel, self.pure_pursuit_vel, self.pi_control_vel) # 速度のパブリッシュ
+            return
+        # 速度入力の計算
+        self.vel = self.compute_velocity (
+            self.path_data, robot_pose, self.lookahead_point, self.closest_point, self.current_speed)
         # 先行点, 最も近い点の可視化
         lookahead_pose = self.ndarray_to_PoseStamped(self.lookahead_point)
         closest_pose = self.ndarray_to_PoseStamped(self.closest_point)
         self.show_circle(self.current_lookahead_distance)
         self.lookahead_pub.publish(lookahead_pose) # 先行点パブリッシュ
         self.closest_pub.publish(closest_pose) # 最も近い点パブリッシュ
-        if lookahead_pose is None or closest_pose is None:
-            self.get_logger().warn("lookahead_pose or closest_pose is None")
-        # 速度入力の計算
-        self.vel = self.compute_velocity (
-            self.path_data, robot_pose, self.lookahead_point, self.closest_point, self.current_speed)
         # 完了処理
         for index in self.indices:
             index = int(index) # np.int32をintに変換
@@ -235,20 +240,23 @@ class PurePursuitNode(Node):
             pre_closest_index: int,
             lookahead_distance: float,
         ) -> tuple[NDArray[np.float64], NDArray[np.float64], int]:
+        self.get_logger().info(f"robot pose: {robot_pose[:2]}")
         closest_index: int = 0
         radius = 0.5 # [m]
-        # serch_range = 100
-        # start_index = max(0, pre_closest_index - serch_range)
-        # end_index = min(len(path_data), pre_closest_index + serch_range)
         # 最も近い点の検索
         distances: NDArray[np.float64] = np.linalg.norm(path_data[:, :2] - robot_pose[:2], axis=1)
-        self.get_logger().info(f"distances head: {distances[:5]}")
-        self.get_logger().info(f"path data head: {path_data[:5]}")
+        # self.get_logger().info(f"distances head: {distances[:5]}")
+        # self.get_logger().info(f"path data head: {path_data[:5]}")
         serch_indices = np.where(distances < radius)
+        self.get_logger().info(f"serch_indices: {serch_indices}")
+        if len(serch_indices[0]) == 0:
+            radius = 1.0
+            serch_indices = np.where(distances < radius)
+            if len(serch_indices[0]) == 0:
+                self.get_logger().warn("no points in the radius")
+                return None, None, None
         start_index = serch_indices[0][0] if len(serch_indices[0]) > 0 else 0
         end_index = serch_indices[0][-1] if len(serch_indices[0]) > 0 else len(path_data)
-        self.get_logger().info(f"robot pose: {robot_pose[:2]}")
-        self.get_logger().info(f"serch_indices: {serch_indices}")
         self.get_logger().info(f"start_index: {start_index}, end_index: {end_index}")
         diff_point = path_data[start_index:end_index, :2] - path_data[pre_closest_index, :2]
         euclidean_dist = np.linalg.norm(diff_point, axis=1)

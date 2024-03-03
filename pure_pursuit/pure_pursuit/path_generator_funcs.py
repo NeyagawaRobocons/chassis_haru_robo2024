@@ -200,7 +200,8 @@ def interpolate_path_gains(
         angles: NDArray[np.float64],
         max_angle: float,
     ):
-    path_p_gains = path_p_gain * (1.0 + (1.0 / path_p_magnification - 1.0) * angles[:] / max_angle)
+    # path_p_gains = path_p_gain * (1.0 + (1.0 / path_p_magnification - 1.0) * angles[:] / max_angle)
+    path_p_gains = path_p_gain * np.ones(len(angles))
     path_i_gains = path_i_gain * np.ones(len(angles))
 
     return path_p_gains, path_i_gains
