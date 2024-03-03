@@ -1,6 +1,7 @@
 import numpy as np
 from numpy.typing import NDArray
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from scipy.ndimage import gaussian_filter1d
 
 def generate_bezier_curve(
@@ -204,6 +205,37 @@ def interpolate_path_gains(
 
     return path_p_gains, path_i_gains
 
+def draw_square(
+        ax: plt.Axes, 
+        center: float, length: float, yaw_rad: float, 
+        color: str = 'b') -> None:    
+    # 正方形の角の座標を計算
+    half = length / 2
+    corners = np.array([
+        [-half, -half],
+        [-half, half],
+        [half, half],
+        [half, -half],
+        [-half, -half]  # 最初の点に戻るため
+    ])
+    
+    # 回転行列を使用して角の座標を回転
+    rotation_matrix = np.array([
+        [np.cos(yaw_rad), -np.sin(yaw_rad)],
+        [np.sin(yaw_rad), np.cos(yaw_rad)]
+    ])
+    rotated_corners = np.dot(corners, rotation_matrix)
+    
+    # 中心座標を加算して、正しい位置に移動
+    rotated_corners[:, 0] += center[0]
+    rotated_corners[:, 1] += center[1]
+    
+    # 正方形を描画
+    ax.plot(rotated_corners[:, 0], rotated_corners[:, 1], color+'-')
+
+def distance(p1: NDArray[np.float64], p2: NDArray[np.float64]) -> float:
+    return np.linalg.norm(p1 - p2)
+
 def generate_and_save_path(
         poses: NDArray[np.float64], 
         commands: NDArray[np.float64], 
@@ -215,7 +247,8 @@ def generate_and_save_path(
         path_p_magnification: float,
         path_i_gain: float,
         resolution: int, 
-        path_number: int
+        path_number: int,
+        field_side: str = 'left'
     ) -> None:
     # description: generate path and save it to a file
     specified_points = np.array([[item[0], item[1]] for item in poses])
@@ -232,6 +265,7 @@ def generate_and_save_path(
     indices = extract_indices(path, specified_points)
     print(indices)
     angles = generate_angles(path, indices, specified_angles)
+    # print(angles)
     max_angle = np.max(angles)
     speeds = interpolate_speed(poses, path, radiuses, indices, max_speed, speed_rates)
     # speeds = np.array([max_speed for _ in range(len(path))])
@@ -295,7 +329,7 @@ def generate_and_save_path(
         plt.plot(circ_x, circ_y, 'r--')
         plt.plot(expanded_circ_x, expanded_circ_y, 'r--')
 
-    left_map = [
+    map = [
         [[-3.443, -3.462], [-0.019, -3.462]],
         [[-0.019, -3.462], [-0.019, 3.462]],
         [[-0.019, 3.462], [-3.443, 3.462]],
@@ -307,10 +341,26 @@ def generate_and_save_path(
         [[-1.338, -1.319], [-1.338, 2.462]],
         [[-2.424, 2.462], [-2.424, 3.462]],
     ]
+    if field_side == 'right':
+        for i in range(len(map)):
+            map[i][0][0] *= -1
+            map[i][1][0] *= -1
 
-    for line in left_map:
+    for line in map:
         start_point, end_point = line
         plt.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], 'k-')
+
+    for index, i in zip(indices, range(len(indices))):
+        draw_square(plt.gca(), path[index], 0.650, angles[index], color='b')
+        if index != indices[-1]:
+            inter_index = index + resolution / 2 if resolution % 2 == 0 else index + resolution // 2 # resolutionが偶数の場合と奇数の場合で処理を分ける
+            draw_square(plt.gca(), path[int(inter_index)], 0.650, angles[int(inter_index)], color='r')
+            if distance(path[index], path[indices[i+1]]) > 1.0:
+                print(f"distance between {index} and {indices[i+1]} is {distance(path[index], path[indices[i+1]])}")
+                inter_index2 = index + resolution / 3 if resolution % 3 == 0 else index + resolution // 3 # resolutionが3の倍数の場合とそうでない場合で処理を分ける
+                inter_index3 = index + resolution / 3 * 2 if resolution % 3 == 0 else index + resolution // 3 * 2
+                draw_square(plt.gca(), path[int(inter_index2)], 0.650, angles[int(inter_index2)], color='r')
+                draw_square(plt.gca(), path[int(inter_index3)], 0.650, angles[int(inter_index3)], color='r')
 
     plt.title('Path with Interpolated Angles')
     plt.xlabel('X')

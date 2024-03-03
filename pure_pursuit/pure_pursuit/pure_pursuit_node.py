@@ -123,8 +123,8 @@ class PurePursuitNode(Node):
                 msg.path_p_gain,
                 msg.path_i_gain,
             ] for msg in path_msgs]) # 経路データをnumpy配列に変換
-        self.distance_threshold = goal_handle.request.distance_threshold # 距離の閾値の受け取りと格納
-        self.angle_threshold = goal_handle.request.angle_threshold # 角度の閾値の受け取りと格納
+        self.distance_threshold = goal_handle.request.path.distance_threshold # 距離の閾値の受け取りと格納
+        self.angle_threshold = goal_handle.request.path.angle_threshold # 角度の閾値の受け取りと格納
         self.previous_pose = self.path_data[0, :3]
         self.tangents = self.compute_tangents (self.path_data) # 接ベクトルの計算と格納
         self.angles, self.max_angle = self.compute_angles (self.tangents) # 角度の計算と格納

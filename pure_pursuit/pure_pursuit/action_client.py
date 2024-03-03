@@ -38,8 +38,8 @@ class PathActionClient(Node):
         self.path_file_name: str = f'path{self.path_number}.csv'
         self.indices_file_name: str = f'indices_and_commands{self.path_number}.csv'
 
-        self.path = self.get_path()
-        self.indices, self.daiza_commands, self.hina_commands, self.bonbori_commands, self.set_pose_index = self.get_indices_and_commands()
+        self.path, self.distance_threshold, self.angle_threshold = self.get_path(self.path_file_name)
+        self.indices, self.daiza_commands, self.hina_commands, self.bonbori_commands = self.get_indices_and_commands(self.indices_file_name)
         self.pre_feedback = -1
         self.get_logger().info('Path and indices have been loaded')
         self.get_logger().info(f"path_number: {self.path_number}")
@@ -52,7 +52,6 @@ class PathActionClient(Node):
         self.get_logger().info(f"Daiza commands: {self.daiza_commands}")
         self.get_logger().info(f"Hina commands: {self.hina_commands}")
         self.get_logger().info(f"Bonbori commands: {self.bonbori_commands}")
-        self.get_logger().info(f"Set pose index: {self.set_pose_index}")
         self.send_goal(self.path, self.indices)
         self.get_logger().info('Goal has been sent')
 
@@ -71,8 +70,9 @@ class PathActionClient(Node):
 
         goal_msg = PathAndFeedback.Goal()
         goal_msg.path.path = path
+        goal_msg.path.distance_threshold = self.distance_threshold
+        goal_msg.path.angle_threshold = self.angle_threshold
         goal_msg.feedback_indices = [int(index) for index in indices]
-        goal_msg.set_pose_index = self.set_pose_index
 
         self._action_client.wait_for_server()
         self._send_goal_future = self._action_client.send_goal_async(goal_msg, feedback_callback=self.feedback_callback)
@@ -129,9 +129,11 @@ class PathActionClient(Node):
         if bonbori_state:
             self._bonbori_cmd_service(bonbori_state)
 
-    def get_path(self):
+    def get_path(self, path_file_name='path1.csv'):
         path = []
-        df = pd.read_csv(os.path.join(get_package_share_directory('pure_pursuit'), 'csv', self.path_file_name))
+        distance_threshold: float = 0.0
+        angle_threshold: float = 0.0
+        df = pd.read_csv(os.path.join(get_package_share_directory('pure_pursuit'), 'csv', path_file_name))
         for i in range(len(df)):
             point = Pose2DWithParams()
             point.x = df.at[i, 'x']
@@ -141,28 +143,26 @@ class PathActionClient(Node):
             point.lookahead_distance = df.at[i, 'lookahead_distance']
             point.angle_p_gain = df.at[i, 'p_gain']
             point.angle_i_gain = df.at[i, 'i_gain']
-            point.angle_threshold = df.at[i, 'angle_threshold']
             point.path_p_gain = df.at[i, 'path_p_gain']
             point.path_i_gain = df.at[i, 'path_i_gain']
             path.append(point)
-        return path
+        distance_threshold = df.at[0, 'distance_threshold']
+        angle_threshold = df.at[0, 'angle_threshold']
+        return path, distance_threshold, angle_threshold
 
-    def get_indices_and_commands(self):
+    def get_indices_and_commands(self, indices_file_name='indices1.csv'):
         indices = []
         daiza_commands = []
         hina_commands = []
         bonbori_commands = []
-        set_pose_index: int = 0
-        df = pd.read_csv(os.path.join(get_package_share_directory('pure_pursuit'), 'csv', self.indices_file_name))
+        df = pd.read_csv(os.path.join(get_package_share_directory('pure_pursuit'), 'csv', indices_file_name))
         for i in range(len(df)):
             indices.append(df.at[i, 'index'])
             daiza_commands.append(df.at[i, 'command1'])
             hina_commands.append(df.at[i, 'command2'])
             bonbori_commands.append(df.at[i, 'command3'])
-            if df.at[i, 'set_pose_flag']:
-                set_pose_index = int(df.at[i, 'index'])
 
-        return indices, daiza_commands, hina_commands, bonbori_commands, set_pose_index
+        return indices, daiza_commands, hina_commands, bonbori_commands
     
     def set_pose(self, path: NDArray[np.float64], index: int) -> None:
         initialpose_msg = PoseWithCovarianceStamped()
