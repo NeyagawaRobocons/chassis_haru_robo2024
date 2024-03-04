@@ -133,7 +133,8 @@ def interpolate_speed(
         radiuses: NDArray[np.float64],
         indices: NDArray[np.int32],
         max_speed: float,
-        speed_rates: NDArray[np.float64]
+        speed_rates: NDArray[np.float64],
+        time_constant: float = 1.0
     ) -> NDArray[np.float64]:
     speeds = np.zeros(len(path))
     curve_end_index = 0
@@ -162,7 +163,8 @@ def interpolate_speed(
     # speeds[curve_end_index:] = max_speed * np.cos(np.pi * np.linspace(0, 1, num=len(speeds[curve_end_index:])))
     # speeds[curve_end_index:] = np.linspace(max_speed * speed_rates[-2], 0, num=len(speeds[curve_end_index:]))
     if speed_rates[-1] < 1.0:
-        speeds[curve_end_index:] = max_speed * speed_rates[-2] * 2 * np.arccos(np.linspace(0, 1, num=len(speeds[curve_end_index:]))) / np.pi
+        # speeds[curve_end_index:] = max_speed * speed_rates[-2] * 2 * np.arccos(np.linspace(0, 1, num=len(speeds[curve_end_index:]))) / np.pi
+        speeds[curve_end_index:] = max_speed * speed_rates[-2] * (1.0 - np.exp(- np.linspace(5 * time_constant, 0, num=len(speeds[curve_end_index:])) / time_constant))
     else:
         speeds[curve_end_index:] = np.linspace(max_speed * speed_rates[-2], max_speed * speed_rates[-1], num=len(speeds[curve_end_index:]))
 
@@ -249,7 +251,8 @@ def generate_and_save_path(
         path_i_gain: float,
         resolution: int, 
         path_number: int,
-        field_side: str = 'left'
+        field_side: str = 'left',
+        decrease_time_constant: float = 1.0 / 5.0,
     ) -> None:
     # description: generate path and save it to a file
     specified_points = np.array([[item[0], item[1]] for item in poses])
@@ -268,7 +271,7 @@ def generate_and_save_path(
     angles = generate_angles(path, indices, specified_angles)
     # print(angles)
     max_angle = np.max(angles)
-    speeds = interpolate_speed(poses, path, radiuses, indices, max_speed, speed_rates)
+    speeds = interpolate_speed(poses, path, radiuses, indices, max_speed, speed_rates, decrease_time_constant)
     # speeds = np.array([max_speed for _ in range(len(path))])
     speeds = gaussian_filter1d(speeds, sigma=3)
     lookahead_distances = interpolate_lookahead_distance(max_lookahead_distance, speeds, max_speed)

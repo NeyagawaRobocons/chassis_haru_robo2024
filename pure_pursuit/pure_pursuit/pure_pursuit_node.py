@@ -219,7 +219,7 @@ class PurePursuitNode(Node):
             self.get_logger().info(f"x, y distance is less than threshold, robot angle: {robot_pose[2]}, goal angle: {self.path_data[-1][2]}")
             # self.vel[:2] = self.path_p_gain * (self.path_data[-1][:2] - robot_pose[:2]) @ self.rotation_matrix(-robot_pose[2]).T
             self.vel[:2] = np.array([0.0, 0.0])
-            if abs(robot_pose[2] - self.path_data[-1][2]) < self.angle_threshold:
+            if np.abs(robot_pose[2] - self.path_data[-1][2]) < self.angle_threshold and np.abs(self.robot_pose[2] - self.previous_pose[2]) < self.angle_threshold:
                 self.vel[2] = 0.0
                 self.publish_vels(self.vel, self.pure_pursuit_vel, self.pi_control_vel) # 速度のパブリッシュ
                 # 完了処理を行う
@@ -262,7 +262,7 @@ class PurePursuitNode(Node):
         euclidean_dist = np.linalg.norm(diff_point, axis=1)
         differences = distances[start_index:end_index]**2
         # + 0.1 * euclidean_dist**2 # LQRっぽい感じ
-        
+
         closest_index = np.argmin(differences) + start_index
         closest_index = int(closest_index)
         closest_point: NDArray[np.float64] = path_data[closest_index]
