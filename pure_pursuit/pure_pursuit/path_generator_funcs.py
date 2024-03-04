@@ -386,3 +386,5 @@ def generate_and_save_path(
     plt.xlabel('Index')
     plt.ylabel('Value')
     plt.legend()
+
+    return map
