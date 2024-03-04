@@ -25,6 +25,7 @@ class PathServerNode(Node):
         response.daiza_commands = daiza_commands
         response.hina_commands = hina_commands
         response.bonbori_commands = bonbori_commands
+        self.get_logger().info(f'response: {response}')
         return response
 
     def get_path(self, path_file_name='path1.csv'):
@@ -55,10 +56,10 @@ class PathServerNode(Node):
         bonbori_commands = []
         df = pd.read_csv(os.path.join(get_package_share_directory('pure_pursuit'), 'csv', indices_file_name))
         for i in range(len(df)):
-            indices.append(df.at[i, 'index'])
-            daiza_commands.append(df.at[i, 'command1'])
-            hina_commands.append(df.at[i, 'command2'])
-            bonbori_commands.append(df.at[i, 'command3'])
+            indices.append(int(df.at[i, 'index']))
+            daiza_commands.append(int(df.at[i, 'command1']))
+            hina_commands.append(int(df.at[i, 'command2']))
+            bonbori_commands.append(bool(df.at[i, 'command3']))
 
         return indices, daiza_commands, hina_commands, bonbori_commands
 
