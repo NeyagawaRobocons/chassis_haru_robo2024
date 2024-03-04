@@ -112,6 +112,9 @@ class PurePursuitNode(Node):
         path_msgs = goal_handle.request.path.path # 経路データの受け取りと格納
         self.indices = np.array(goal_handle.request.feedback_indices) # 特定の点のインデックスの受け取りと格納
         self.get_logger().info("path data has been received")
+        # self.get_logger().info(f"request: {goal_handle.request}")
+        # self.get_logger().info(f"path_data: {self.path_data}")
+        # self.get_logger().info(f"path_msgs: {path_msgs}")
         self.path_data = np.array([[
                 msg.x, 
                 msg.y, 
