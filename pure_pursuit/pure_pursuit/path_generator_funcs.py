@@ -224,8 +224,8 @@ def draw_square(
     
     # 回転行列を使用して角の座標を回転
     rotation_matrix = np.array([
-        [np.cos(yaw_rad), -np.sin(yaw_rad)],
-        [np.sin(yaw_rad), np.cos(yaw_rad)]
+        [np.cos(yaw_rad), np.sin(yaw_rad)],
+        [-np.sin(yaw_rad), np.cos(yaw_rad)]
     ])
     rotated_corners = np.dot(corners, rotation_matrix)
     

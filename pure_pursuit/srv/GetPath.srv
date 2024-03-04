@@ -1,6 +1,6 @@
 # GetPath.srv
 
-# --- request constants (Field type +Path name)
+# --- request constants (Field type + Path name)
 uint8 RIGHT_START=1
 uint8 RIGHT_DAIZA_COLLECT=2
 uint8 RIGHT_DAIZA_PLACE=3
