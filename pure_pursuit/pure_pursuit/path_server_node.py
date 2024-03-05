@@ -14,6 +14,7 @@ class PathServerNode(Node):
         self.get_logger().info('Path server node has been initialized')
 
     def get_path_callback(self, request, response):
+        self.get_logger().info('Path server node has been called')
         path_file_name = f'path{request.path_number}.csv'
         indices_file_name = f'indices_and_commands{request.path_number}.csv'
         path, distance_threshold, angle_threshold = self.get_path(path_file_name)
@@ -25,7 +26,7 @@ class PathServerNode(Node):
         response.daiza_commands = daiza_commands
         response.hina_commands = hina_commands
         response.bonbori_commands = bonbori_commands
-        self.get_logger().info(f'response: {response}')
+        self.get_logger().info(f'path_number: {request.path_number}')
         return response
 
     def get_path(self, path_file_name='path1.csv'):

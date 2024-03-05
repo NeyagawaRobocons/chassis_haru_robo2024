@@ -227,7 +227,7 @@ class PurePursuitNode(Node):
                 self.publish_vels(self.vel, self.pure_pursuit_vel, self.pi_control_vel) # 速度のパブリッシュ
                 # 完了処理を行う
                 self.result_msg = PathAndFeedback.Result()
-                self.result_msg.final_index = int(self.indices[-1])
+                # self.result_msg.final_index = int(self.indices[-1])
                 # self.vel_pub.publish(Twist()) # 速度のパブリッシュ(停止)
                 self.completed = True
                 self.start_pure_pursuit = False
@@ -252,7 +252,7 @@ class PurePursuitNode(Node):
         # self.get_logger().info(f"path data head: {path_data[:5]}")
         serch_indices = np.where(distances < radius)
         self.get_logger().info(f"serch_indices: {serch_indices}")
-        if len(serch_indices[0]) == 0:
+        if len(serch_indices[0]) < 2:
             radius = 1.0
             serch_indices = np.where(distances < radius)
             if len(serch_indices[0]) == 0:
