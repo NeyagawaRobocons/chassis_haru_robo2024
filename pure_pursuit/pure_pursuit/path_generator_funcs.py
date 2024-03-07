@@ -4,6 +4,59 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from scipy.ndimage import gaussian_filter1d
 
+# declare path name and number
+RIGHT_START=1
+RIGHT_DAIZA_COLLECT=2
+RIGHT_DAIZA_PLACE=3
+RIGHT_HINA_ZONE=4
+RIGHT_HINA_COLLECT=5
+RIGHT_HINA_PLACE=6
+RIGHT_HINA_PLACE_RETRY=7
+RIGHT_DAIZA_PLACE_RETRY=17
+RIGHT_HINA_COLLECT_RETRY=18
+RIGHT_BONBORI_BACK=20
+
+LEFT_START=8
+LEFT_DAIZA_COLLECT=9
+LEFT_DAIZA_PLACE=10
+LEFT_HINA_ZONE=11
+LEFT_HINA_COLLECT=12
+LEFT_HINA_PLACE=13
+LEFT_HINA_PLACE_RETRY=14
+LEFT_DAIZA_PLACE_RETRY=15
+LEFT_HINA_COLLECT_RETRY=16
+LEFT_BONBORI_BACK=19
+
+constant_map_left = [
+    LEFT_START,
+    LEFT_DAIZA_COLLECT,
+    LEFT_DAIZA_PLACE,
+    LEFT_HINA_ZONE,
+    LEFT_HINA_COLLECT,
+    LEFT_HINA_PLACE,
+    LEFT_HINA_PLACE_RETRY,
+    LEFT_DAIZA_PLACE_RETRY,
+    LEFT_HINA_COLLECT_RETRY,
+    LEFT_BONBORI_BACK,
+]
+constant_map_right = [
+    RIGHT_START,
+    RIGHT_DAIZA_COLLECT,
+    RIGHT_DAIZA_PLACE,
+    RIGHT_HINA_ZONE,
+    RIGHT_HINA_COLLECT,
+    RIGHT_HINA_PLACE,
+    RIGHT_HINA_PLACE_RETRY,
+    RIGHT_DAIZA_PLACE_RETRY,
+    RIGHT_HINA_COLLECT_RETRY,
+    RIGHT_BONBORI_BACK,
+]
+
+poses_left = [None] * len(constant_map_left)
+poses_right = [None] * len(constant_map_right)
+commands_left = [None] * len(constant_map_left)
+commands_right = [None] * len(constant_map_right)
+
 def generate_bezier_curve(
         p0, p1, p2, p3, # 4つの制御点 (np.array([x, y])型)
         resolution: int = 20
@@ -377,7 +430,7 @@ def generate_and_save_path(
     plt.grid(True)
     plt.show()
 
-    # plt.plot(angles, label='Interpolated Angles')
+    # plt.figure(figsize=(10, 20))
     plt.plot(path[:, 0], label='X')
     plt.plot(path[:, 1], label='Y')
     plt.plot(speeds, label='Speeds')
@@ -386,8 +439,11 @@ def generate_and_save_path(
     plt.plot(i_gains, label='I Gains')
     plt.plot(path_p_gains, label='Path P Gains')
     plt.plot(path_i_gains, label='Path I Gains')
+    plt.plot(angles, label='Interpolated Angles')
     plt.xlabel('Index')
     plt.ylabel('Value')
     plt.legend()
+    plt.grid(True)
+    # plt.show()
 
     return map
