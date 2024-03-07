@@ -162,11 +162,11 @@ def interpolate_speed(
 
     # speeds[curve_end_index:] = max_speed * np.cos(np.pi * np.linspace(0, 1, num=len(speeds[curve_end_index:])))
     # speeds[curve_end_index:] = np.linspace(max_speed * speed_rates[-2], 0, num=len(speeds[curve_end_index:]))
-    if speed_rates[-1] < 1.0:
+    # if speed_rates[-1] < 1.0:
         # speeds[curve_end_index:] = max_speed * speed_rates[-2] * 2 * np.arccos(np.linspace(0, 1, num=len(speeds[curve_end_index:]))) / np.pi
-        speeds[curve_end_index:] = max_speed * speed_rates[-2] * (1.0 - np.exp(- np.linspace(5 * time_constant, 0, num=len(speeds[curve_end_index:])) / time_constant))
-    else:
-        speeds[curve_end_index:] = np.linspace(max_speed * speed_rates[-2], max_speed * speed_rates[-1], num=len(speeds[curve_end_index:]))
+    speeds[curve_end_index:] = max_speed * speed_rates[-2] * (1.0 - np.exp(- np.linspace(5 * time_constant, 0, num=len(speeds[curve_end_index:])) / time_constant))
+    # else:
+    #     speeds[curve_end_index:] = np.linspace(max_speed * speed_rates[-2], max_speed * speed_rates[-1], num=len(speeds[curve_end_index:]))
 
     # plt.plot(speeds, label='Speeds')
     # plt.legend()
@@ -221,7 +221,7 @@ def draw_square(
         [half, -half],
         [-half, -half]  # 最初の点に戻るため
     ])
-    
+    generate_and_save_path
     # 回転行列を使用して角の座標を回転
     rotation_matrix = np.array([
         [np.cos(yaw_rad), np.sin(yaw_rad)],
