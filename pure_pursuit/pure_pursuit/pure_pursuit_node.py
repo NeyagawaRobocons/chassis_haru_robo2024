@@ -321,14 +321,14 @@ class PurePursuitNode(Node):
     
     def replace_angle_error(self, angle_error: float) -> float:
         self.get_logger().info(f"angle_error: {angle_error}")
-        # if angle_error > np.pi:
-        #     return 2.0 * np.pi - angle_error
-        # elif angle_error < -np.pi:
-        #     return 2.0 * np.pi + angle_error
-        # else:
-        #     return angle_error
-        n = np.ceil(-(np.pi + angle_error) / (2.0 * np.pi))
-        return angle_error + 2.0 * np.pi * n
+        if angle_error > np.pi:
+            return angle_error - 2.0 * np.pi
+        elif angle_error < -np.pi:
+            return angle_error + 2.0 * np.pi
+        else:
+            return angle_error
+        # n = np.ceil(-(np.pi + angle_error) / (2.0 * np.pi))
+        # return angle_error + 2.0 * np.pi * n
 
     def vel_to_Twist (self, vel: NDArray[np.float64]) -> Twist:
         vel_msg = Twist()
